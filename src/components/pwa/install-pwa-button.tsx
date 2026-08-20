@@ -1,10 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download } from "lucide-react";
-import { toast } from "sonner";
+import { Download, Share } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -22,6 +28,7 @@ export function InstallPwaButton() {
   const [event, setEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
   const [ios, setIos] = useState(false);
+  const [iosOpen, setIosOpen] = useState(false);
 
   useEffect(() => {
     if (isStandalone()) {
@@ -50,20 +57,43 @@ export function InstallPwaButton() {
   if (!event && !ios) return null;
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={async () => {
-        if (event) {
-          await event.prompt();
-          setEvent(null);
-          return;
-        }
-        toast.message("No iPhone: toque em Compartilhar e depois em Adicionar à Tela de Início.");
-      }}
-    >
-      <Download />
-      Instalar
-    </Button>
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={async () => {
+          if (event) {
+            await event.prompt();
+            setEvent(null);
+            return;
+          }
+          setIosOpen(true);
+        }}
+      >
+        <Download />
+        Instalar
+      </Button>
+      <Dialog open={iosOpen} onOpenChange={setIosOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Usar como aplicativo</DialogTitle>
+            <DialogDescription>
+              No iPhone o Safari não instala sozinho. Abra pelo ícone da tela inicial para sumirem a barra do site e a barra de baixo.
+            </DialogDescription>
+          </DialogHeader>
+          <ol className="list-decimal space-y-3 pl-5 text-sm text-foreground">
+            <li>
+              Toque em <Share className="mx-0.5 inline size-4 align-text-bottom" /> <strong>Compartilhar</strong> na barra do Safari.
+            </li>
+            <li>
+              Role e toque em <strong>Adicionar à Tela de Início</strong>.
+            </li>
+            <li>
+              Feche o Safari e abra o ícone <strong>Auttus</strong> na tela inicial — não abra pelo Safari de novo.
+            </li>
+          </ol>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
