@@ -24,7 +24,7 @@ services:
       AUTH_SECRET: ${AUTH_SECRET}
       AUTH_TRUST_HOST: "true"
       AUTH_DEV_RESET_LINKS: "false"
-      AUTH_URL: ${AUTH_URL}
+      AUTH_URL: https://bdc.ottiv.io
       SELLERS_GROUP_WEBHOOK_URL: ${SELLERS_GROUP_WEBHOOK_URL:-}
     depends_on:
       postgres:
@@ -40,7 +40,7 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      DOMAIN: ${DOMAIN}
+      DOMAIN: bdc.ottiv.io
       ACME_EMAIL: ${ACME_EMAIL}
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
