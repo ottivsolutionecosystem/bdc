@@ -13,6 +13,9 @@ export default auth((req) => {
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/password/") ||
     pathname.startsWith("/brand/") ||
+    pathname.startsWith("/icons/") ||
+    pathname === "/sw.js" ||
+    pathname === "/manifest.webmanifest" ||
     STATIC_FILE.test(pathname);
 
   if (isPublic) return NextResponse.next();
@@ -27,6 +30,6 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|brand/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.webmanifest|brand/|icons/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

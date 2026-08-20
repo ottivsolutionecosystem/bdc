@@ -120,7 +120,7 @@ export function RankingBoard({
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-semibold tracking-[0.18em] text-primary uppercase">Ranking ao vivo</p>
-          <h2 className={cn("font-semibold tracking-tight text-white", tv ? "text-4xl" : "text-2xl")}>
+          <h2 className={cn("font-semibold tracking-tight text-white", tv ? "text-2xl sm:text-4xl" : "text-2xl")}>
             {data.campaign.name}
           </h2>
           <p className="mt-1 text-sm text-white/65">
@@ -155,7 +155,7 @@ export function RankingBoard({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {[
           { label: "Ligações hoje", value: data.totals.attemptsToday },
           { label: "Contatos hoje", value: data.totals.successfulContactsToday },
@@ -228,7 +228,7 @@ export function RankingBoard({
   );
 
   if (tv) {
-    return <div className="fixed inset-0 z-[60] overflow-auto bg-brand-navy">{board}</div>;
+    return <div className="fixed inset-0 z-[60] overflow-auto bg-brand-navy pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">{board}</div>;
   }
 
   return <div className="overflow-hidden rounded-2xl bg-brand-navy p-5 sm:p-6">{board}</div>;

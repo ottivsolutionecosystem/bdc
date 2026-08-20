@@ -18,7 +18,7 @@ export function EmptyQueueState({ stats }: { stats: QueueStats }) {
                 : "Não há retornos vencidos nem contatos pendentes agora. Volte mais tarde ou aguarde novos retornos."}
           </p>
         </div>
-        <div className="grid grid-cols-3 gap-6 pt-2">
+        <div className="grid grid-cols-3 gap-3 pt-2 sm:gap-6">
           <div>
             <p className="text-2xl font-semibold tabular-nums">{stats.treated}</p>
             <p className="text-xs text-muted-foreground">Tratados</p>

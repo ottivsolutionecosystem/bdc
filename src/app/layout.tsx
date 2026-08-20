@@ -2,7 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-import { Toaster } from "@/components/ui/sonner";
+import { AppToaster } from "@/components/layout/app-toaster";
+import { PwaRegister } from "@/components/pwa/pwa-register";
 
 const inter = Inter({
   variable: "--font-geist-sans",
@@ -23,10 +24,24 @@ export const metadata: Metadata = {
     template: "%s · Auttus Prospect",
   },
   description: "Operação e supervisão de campanhas de ligação",
+  appleWebApp: {
+    capable: true,
+    title: "Auttus",
+    statusBarStyle: "default",
+  },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
+  },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f8f9fa",
+  themeColor: "#0f1e35",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -40,7 +55,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="flex min-h-full flex-col" suppressHydrationWarning>
         {children}
-        <Toaster richColors position="top-right" />
+        <AppToaster />
+        <PwaRegister />
       </body>
     </html>
   );

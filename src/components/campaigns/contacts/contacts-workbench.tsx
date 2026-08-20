@@ -77,6 +77,126 @@ function isReopenable(status: ContactStatus) {
   return REOPENABLE_STATUSES.includes(status);
 }
 
+function ContactActions({
+  campaignId,
+  contact,
+  eligibleAgents,
+  loading,
+  onReopen,
+}: {
+  campaignId: string;
+  contact: ContactRow;
+  eligibleAgents: { id: string; name: string }[];
+  loading: boolean;
+  onReopen: (ids: string[]) => void;
+}) {
+  if (!isReopenable(contact.status)) {
+    return <span className="text-xs text-muted-foreground">Encerrado</span>;
+  }
+  return (
+    <div className="flex flex-wrap justify-end gap-2">
+      <Button variant="ghost" size="sm" disabled={loading} onClick={() => onReopen([contact.id])}>
+        Mesma fila
+      </Button>
+      {eligibleAgents.length > 0 && (
+        <MoveContactAction
+          campaignId={campaignId}
+          contactId={contact.id}
+          currentAgentId={contact.assignedAgent?.id ?? null}
+          agents={eligibleAgents}
+        />
+      )}
+    </div>
+  );
+}
+
+function ContactCard({
+  campaignId,
+  group,
+  contact,
+  selected,
+  canAct,
+  loading,
+  eligibleAgents,
+  onToggle,
+  onReopen,
+}: {
+  campaignId: string;
+  group: ContactListGroup;
+  contact: ContactRow;
+  selected: boolean;
+  canAct: boolean;
+  loading: boolean;
+  eligibleAgents: { id: string; name: string }[];
+  onToggle: (id: string, checked: boolean) => void;
+  onReopen: (ids: string[]) => void;
+}) {
+  return (
+    <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <ContactNameButton campaignId={campaignId} contactId={contact.id} name={contact.name} />
+          <p className="mt-1 text-sm text-muted-foreground">{contact.phone}</p>
+        </div>
+        {canAct ? (
+          <Checkbox
+            checked={selected}
+            onCheckedChange={(value) => onToggle(contact.id, value === true)}
+            aria-label={`Selecionar ${contact.name}`}
+          />
+        ) : null}
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <ContactStatusBadge status={contact.status} />
+        {group === "action" ? <span className="text-muted-foreground">{actionReasonLabel(contact.status)}</span> : null}
+      </div>
+      <dl className="grid grid-cols-2 gap-2 text-sm">
+        <div>
+          <dt className="text-muted-foreground">Agente</dt>
+          <dd>{contact.assignedAgent?.name ?? "—"}</dd>
+        </div>
+        {group !== "treated" ? (
+          <>
+            <div>
+              <dt className="text-muted-foreground">Veículo</dt>
+              <dd className="truncate">{contact.lastVehicle ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Próximo contato</dt>
+              <dd>{formatDate(contact.nextContactAt)}</dd>
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <dt className="text-muted-foreground">Parecer</dt>
+              <dd>{contact.finalDisposition?.label ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Tratado</dt>
+              <dd>{formatDate(contact.lastAttemptAt)}</dd>
+            </div>
+          </>
+        )}
+        <div>
+          <dt className="text-muted-foreground">Tentativas</dt>
+          <dd className="tabular-nums">{contact.attemptsCount}</dd>
+        </div>
+      </dl>
+      {group === "treated" && (
+        <OverrideTemperature campaignId={campaignId} contactId={contact.id} temperature={contact.temperature} />
+      )}
+      <ContactActions
+        campaignId={campaignId}
+        contact={contact}
+        eligibleAgents={eligibleAgents}
+        loading={loading}
+        onReopen={onReopen}
+      />
+    </div>
+  );
+}
+
 export function ContactsWorkbench({
   campaignId,
   group,
@@ -213,7 +333,24 @@ export function ContactsWorkbench({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="space-y-3 md:hidden">
+        {contacts.map((contact) => (
+          <ContactCard
+            key={contact.id}
+            campaignId={campaignId}
+            group={group}
+            contact={contact}
+            selected={selected.includes(contact.id)}
+            canAct={isReopenable(contact.status)}
+            loading={loading}
+            eligibleAgents={eligibleAgents}
+            onToggle={toggleOne}
+            onReopen={openReopen}
+          />
+        ))}
+      </div>
+
+      <div className="hidden md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -293,28 +430,13 @@ export function ContactsWorkbench({
                   )}
                   {group === "treated" && <TableCell>{contact.appointment?.seller?.name ?? "—"}</TableCell>}
                   <TableCell className="text-right">
-                    {canAct ? (
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={loading}
-                          onClick={() => openReopen([contact.id])}
-                        >
-                          Mesma fila
-                        </Button>
-                        {eligibleAgents.length > 0 && (
-                          <MoveContactAction
-                            campaignId={campaignId}
-                            contactId={contact.id}
-                            currentAgentId={contact.assignedAgent?.id ?? null}
-                            agents={eligibleAgents}
-                          />
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Encerrado</span>
-                    )}
+                    <ContactActions
+                      campaignId={campaignId}
+                      contact={contact}
+                      eligibleAgents={eligibleAgents}
+                      loading={loading}
+                      onReopen={openReopen}
+                    />
                   </TableCell>
                 </TableRow>
               );

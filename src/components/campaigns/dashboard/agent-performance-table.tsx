@@ -35,8 +35,51 @@ export function AgentPerformanceTable({ rows }: { rows: AgentPerformanceRow[] })
         <CardTitle>Performance por agente</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
-          <Table>
+        {rows.length === 0 ? (
+          <p className="text-center text-sm text-muted-foreground">Nenhuma agente nesta campanha ainda.</p>
+        ) : (
+          <>
+            <div className="space-y-3 md:hidden">
+              {sorted.map((row) => (
+                <div key={row.agentId} className="rounded-xl border border-border p-4">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="font-medium">{row.agentName}</p>
+                    <p className="text-lg font-semibold tabular-nums text-primary">{row.score} pts</p>
+                  </div>
+                  <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <dt className="text-muted-foreground">Base</dt>
+                      <dd className="tabular-nums">{row.assigned}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Tratados</dt>
+                      <dd className="tabular-nums">{row.treated}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Pendentes</dt>
+                      <dd className="tabular-nums">{row.pending}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Contatos</dt>
+                      <dd className="tabular-nums">{row.successfulContacts}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Interessados</dt>
+                      <dd className="tabular-nums">{row.interested}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Visitas</dt>
+                      <dd className="tabular-nums">{row.appointments}</dd>
+                    </div>
+                  </dl>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Tratamento {row.treatmentRate}% · contato {row.contactRate}% · interesse {row.interestRate}%
+                  </p>
+                </div>
+              ))}
+            </div>
+            <div className="hidden md:block">
+              <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Agente</TableHead>
@@ -56,13 +99,6 @@ export function AgentPerformanceTable({ rows }: { rows: AgentPerformanceRow[] })
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={14} className="text-center text-muted-foreground">
-                    Nenhuma agente nesta campanha ainda.
-                  </TableCell>
-                </TableRow>
-              )}
               {sorted.map((row) => (
                 <TableRow key={row.agentId}>
                   <TableCell className="font-medium">{row.agentName}</TableCell>
@@ -83,7 +119,9 @@ export function AgentPerformanceTable({ rows }: { rows: AgentPerformanceRow[] })
               ))}
             </TableBody>
           </Table>
-        </div>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

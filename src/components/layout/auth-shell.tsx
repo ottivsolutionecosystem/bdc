@@ -1,4 +1,5 @@
 import { BrandWordmark } from "@/components/brand/logo";
+import { InstallPwaButton } from "@/components/pwa/install-pwa-button";
 
 export function AuthShell({
   title,
@@ -25,6 +26,9 @@ export function AuthShell({
           <div className="p-6 pt-4">{children}</div>
         </div>
         {footer}
+        <div className="flex justify-center">
+          <InstallPwaButton />
+        </div>
       </div>
     </div>
   );

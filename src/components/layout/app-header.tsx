@@ -2,17 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Handshake, Menu, PhoneCall, Users } from "lucide-react";
+import { Handshake, PhoneCall, Users } from "lucide-react";
 
 import { BrandLink } from "@/components/brand/logo";
 import { UserMenu } from "@/components/layout/user-menu";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { InstallPwaButton } from "@/components/pwa/install-pwa-button";
 import { cn } from "@/lib/utils";
 import type { UserRole } from "@/generated/prisma/enums";
 
@@ -62,7 +56,7 @@ export function AppSidebar({ homeHref, role }: { homeHref: string; role: UserRol
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200",
+                    "relative flex min-h-11 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200",
                     active ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/5 hover:text-white"
                   )}
                 >
@@ -80,53 +74,14 @@ export function AppSidebar({ homeHref, role }: { homeHref: string; role: UserRol
 }
 
 export function AppTopbar({ role, name }: { role: UserRole; name: string }) {
-  const pathname = usePathname();
-  const items = navGroups(role).flatMap((group) => group.items);
-
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-white pt-[env(safe-area-inset-top)]">
       <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
         <div className="md:hidden">
           <BrandLink href={role === "SELLER" ? "/sales" : "/campaigns"} variant="compact" />
         </div>
-
-        {items.length > 0 && (
-          <nav className="hidden items-center gap-1 sm:flex md:hidden">
-            {items.map((item) => {
-              const active = isActive(pathname, item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors duration-200",
-                    active ? "bg-accent text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-        )}
-
         <div className="ml-auto flex items-center gap-1">
-          {items.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="sm:hidden" aria-label="Menu">
-                  <Menu />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                {items.map((item) => (
-                  <DropdownMenuItem key={item.href} asChild>
-                    <Link href={item.href}>{item.label}</Link>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+          <InstallPwaButton />
           <UserMenu name={name} role={role} />
         </div>
       </div>
@@ -149,7 +104,7 @@ export function AppBottomNav({ role }: { role: UserRole }) {
               <Link
                 href={item.href}
                 className={cn(
-                  "relative flex flex-col items-center gap-1 px-2 py-2.5 text-[11px] font-medium transition-colors duration-200",
+                  "relative flex min-h-14 flex-col items-center justify-center gap-1 px-2 py-2 text-[11px] font-medium transition-colors duration-200",
                   active ? "text-primary" : "text-muted-foreground"
                 )}
               >

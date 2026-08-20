@@ -14,10 +14,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-dvh">
+      <a
+        href="#conteudo"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-[80] focus:m-3 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+      >
+        Ir para o conteúdo
+      </a>
       <AppSidebar homeHref={homeHref} role={session.user.role} />
       <div className="flex min-w-0 flex-1 flex-col">
         <AppTopbar role={session.user.role} name={session.user.name ?? session.user.email ?? "Usuário"} />
-        <main className="flex-1 pb-20 md:pb-0">{children}</main>
+        <main id="conteudo" className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
+          {children}
+        </main>
         <AppBottomNav role={session.user.role} />
       </div>
     </div>

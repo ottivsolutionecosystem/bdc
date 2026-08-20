@@ -211,6 +211,8 @@ Abra `https://crm.suaempresa.com`
 7. Agente entra, registra parecer de **interesse** ou **visita agendada**.
 8. Aparece **Avisar grupo de vendedores**. Teste. A mensagem tem que chegar no n8n / grupo.
 
+**Instalar no celular (PWA):** o site precisa estar em HTTPS. No Android, o Chrome mostra Instalar. No iPhone, Safari → Compartilhar → Adicionar à Tela de Início.
+
 Ranking na TV: `/campaigns/ID/ranking?tv=1` (precisa estar logado).
 
 ---

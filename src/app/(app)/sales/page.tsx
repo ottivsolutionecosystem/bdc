@@ -49,7 +49,7 @@ export default async function SalesPage() {
         actions={<CreateAppointmentDialog customers={uniqueCustomers} />}
       />
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Card className="overflow-hidden">
           <div className="h-1 bg-primary" />
           <CardContent className="p-4">
@@ -81,38 +81,60 @@ export default async function SalesPage() {
               Nenhuma oportunidade encaminhada ainda.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Telefone</TableHead>
-                  <TableHead>Campanha</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Observação</TableHead>
-                  <TableHead>Criada em</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              <div className="space-y-3 md:hidden">
                 {opportunities.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.customer.name}</TableCell>
-                    <TableCell>{item.customer.phone}</TableCell>
-                    <TableCell>{item.originCampaign?.name ?? "—"}</TableCell>
-                    <TableCell>
-                      <SalesStatusSelect
-                        endpoint={`/api/sales/opportunities/${item.id}`}
-                        value={item.status}
-                        options={OPPORTUNITY_STATUS_LABELS}
-                      />
-                    </TableCell>
-                    <TableCell className="min-w-56">
-                      <SalesNotesField endpoint={`/api/sales/opportunities/${item.id}`} value={item.notes} />
-                    </TableCell>
-                    <TableCell>{dateFormatter.format(item.createdAt)}</TableCell>
-                  </TableRow>
+                  <div key={item.id} className="space-y-3 rounded-xl border border-border p-4">
+                    <div>
+                      <p className="font-medium">{item.customer.name}</p>
+                      <p className="text-sm text-muted-foreground">{item.customer.phone}</p>
+                    </div>
+                    <p className="text-sm">{item.originCampaign?.name ?? "—"}</p>
+                    <SalesStatusSelect
+                      endpoint={`/api/sales/opportunities/${item.id}`}
+                      value={item.status}
+                      options={OPPORTUNITY_STATUS_LABELS}
+                    />
+                    <SalesNotesField endpoint={`/api/sales/opportunities/${item.id}`} value={item.notes} />
+                    <p className="text-xs text-muted-foreground">{dateFormatter.format(item.createdAt)}</p>
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Telefone</TableHead>
+                      <TableHead>Campanha</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Observação</TableHead>
+                      <TableHead>Criada em</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {opportunities.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.customer.name}</TableCell>
+                        <TableCell>{item.customer.phone}</TableCell>
+                        <TableCell>{item.originCampaign?.name ?? "—"}</TableCell>
+                        <TableCell>
+                          <SalesStatusSelect
+                            endpoint={`/api/sales/opportunities/${item.id}`}
+                            value={item.status}
+                            options={OPPORTUNITY_STATUS_LABELS}
+                          />
+                        </TableCell>
+                        <TableCell className="min-w-56">
+                          <SalesNotesField endpoint={`/api/sales/opportunities/${item.id}`} value={item.notes} />
+                        </TableCell>
+                        <TableCell>{dateFormatter.format(item.createdAt)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -127,38 +149,60 @@ export default async function SalesPage() {
           {appointments.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma visita agendada ainda.</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Telefone</TableHead>
-                  <TableHead>Campanha</TableHead>
-                  <TableHead>Quando</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Observação</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              <div className="space-y-3 md:hidden">
                 {appointments.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.customer.name}</TableCell>
-                    <TableCell>{item.customer.phone}</TableCell>
-                    <TableCell>{item.originCampaignContact?.campaign.name ?? "—"}</TableCell>
-                    <TableCell>{dateFormatter.format(item.scheduledAt)}</TableCell>
-                    <TableCell>
-                      <SalesStatusSelect
-                        endpoint={`/api/sales/appointments/${item.id}`}
-                        value={item.status}
-                        options={APPOINTMENT_STATUS_LABELS}
-                      />
-                    </TableCell>
-                    <TableCell className="min-w-56">
-                      <SalesNotesField endpoint={`/api/sales/appointments/${item.id}`} value={item.notes} />
-                    </TableCell>
-                  </TableRow>
+                  <div key={item.id} className="space-y-3 rounded-xl border border-border p-4">
+                    <div>
+                      <p className="font-medium">{item.customer.name}</p>
+                      <p className="text-sm text-muted-foreground">{item.customer.phone}</p>
+                    </div>
+                    <p className="text-sm">{item.originCampaignContact?.campaign.name ?? "—"}</p>
+                    <p className="text-sm tabular-nums">{dateFormatter.format(item.scheduledAt)}</p>
+                    <SalesStatusSelect
+                      endpoint={`/api/sales/appointments/${item.id}`}
+                      value={item.status}
+                      options={APPOINTMENT_STATUS_LABELS}
+                    />
+                    <SalesNotesField endpoint={`/api/sales/appointments/${item.id}`} value={item.notes} />
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Telefone</TableHead>
+                      <TableHead>Campanha</TableHead>
+                      <TableHead>Quando</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Observação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {appointments.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.customer.name}</TableCell>
+                        <TableCell>{item.customer.phone}</TableCell>
+                        <TableCell>{item.originCampaignContact?.campaign.name ?? "—"}</TableCell>
+                        <TableCell>{dateFormatter.format(item.scheduledAt)}</TableCell>
+                        <TableCell>
+                          <SalesStatusSelect
+                            endpoint={`/api/sales/appointments/${item.id}`}
+                            value={item.status}
+                            options={APPOINTMENT_STATUS_LABELS}
+                          />
+                        </TableCell>
+                        <TableCell className="min-w-56">
+                          <SalesNotesField endpoint={`/api/sales/appointments/${item.id}`} value={item.notes} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

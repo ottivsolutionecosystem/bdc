@@ -64,7 +64,7 @@ export default async function CampaignLayout({
           <CampaignStatusBadge status={campaign.status} />
         </div>
       </div>
-      <div className="sticky top-14 z-30 mt-4 border-b border-border bg-background/90 py-2 backdrop-blur-xl">
+      <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 mt-4 border-b border-border bg-background/90 py-2 backdrop-blur-xl">
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
           <CampaignNav campaignId={id} items={items} />
         </div>
