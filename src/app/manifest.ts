@@ -2,12 +2,18 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    id: "/",
     name: "Auttus Prospect",
     short_name: "Auttus",
     description: "Operação e supervisão de campanhas de ligação",
     start_url: "/",
     scope: "/",
     display: "standalone",
+    display_override: ["standalone", "minimal-ui"],
+    prefer_related_applications: false,
+    launch_handler: {
+      client_mode: ["navigate-existing", "auto"],
+    },
     orientation: "portrait-primary",
     background_color: "#f8f9fa",
     theme_color: "#0f1e35",

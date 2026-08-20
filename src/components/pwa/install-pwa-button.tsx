@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download, Share } from "lucide-react";
+import { Download, MoreVertical, Share } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +17,8 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
+type HelpKind = "ios" | "android" | null;
+
 function isStandalone() {
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
@@ -28,14 +30,17 @@ export function InstallPwaButton() {
   const [event, setEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
   const [ios, setIos] = useState(false);
-  const [iosOpen, setIosOpen] = useState(false);
+  const [android, setAndroid] = useState(false);
+  const [help, setHelp] = useState<HelpKind>(null);
 
   useEffect(() => {
     if (isStandalone()) {
       setInstalled(true);
       return;
     }
-    setIos(/iphone|ipad|ipod/i.test(window.navigator.userAgent));
+    const ua = window.navigator.userAgent;
+    setIos(/iphone|ipad|ipod/i.test(ua));
+    setAndroid(/android/i.test(ua));
 
     function onPrompt(raw: Event) {
       raw.preventDefault();
@@ -54,7 +59,7 @@ export function InstallPwaButton() {
   }, []);
 
   if (installed) return null;
-  if (!event && !ios) return null;
+  if (!event && !ios && !android) return null;
 
   return (
     <>
@@ -67,13 +72,13 @@ export function InstallPwaButton() {
             setEvent(null);
             return;
           }
-          setIosOpen(true);
+          setHelp(ios ? "ios" : "android");
         }}
       >
         <Download />
         Instalar
       </Button>
-      <Dialog open={iosOpen} onOpenChange={setIosOpen}>
+      <Dialog open={help === "ios"} onOpenChange={(open) => setHelp(open ? "ios" : null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Usar como aplicativo</DialogTitle>
@@ -90,6 +95,30 @@ export function InstallPwaButton() {
             </li>
             <li>
               Feche o Safari e abra o ícone <strong>Auttus</strong> na tela inicial — não abra pelo Safari de novo.
+            </li>
+          </ol>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={help === "android"} onOpenChange={(open) => setHelp(open ? "android" : null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Usar como aplicativo</DialogTitle>
+            <DialogDescription>
+              No Android as barras do Chrome só somem se você instalar o app. Um atalho da tela inicial continua abrindo o site no navegador.
+            </DialogDescription>
+          </DialogHeader>
+          <ol className="list-decimal space-y-3 pl-5 text-sm text-foreground">
+            <li>
+              Abra o site no <strong>Chrome</strong> (não pelo WhatsApp nem por outro app).
+            </li>
+            <li>
+              Toque em <MoreVertical className="mx-0.5 inline size-4 align-text-bottom" /> e depois em <strong>Instalar app</strong> ou <strong>Instalar aplicativo</strong>.
+            </li>
+            <li>
+              Se aparecer só <strong>Adicionar à tela inicial</strong>, isso ainda abre o Chrome com as barras. Procure <strong>Instalar app</strong>.
+            </li>
+            <li>
+              Abra o <strong>Auttus</strong> pela lista de aplicativos, não pela aba do Chrome.
             </li>
           </ol>
         </DialogContent>
