@@ -1,0 +1,153 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.75rem;
+
+  --background: #f8f9fa;
+  --foreground: #1e293b;
+  --card: #ffffff;
+  --card-foreground: #1e293b;
+  --popover: #ffffff;
+  --popover-foreground: #1e293b;
+  --primary: #f06500;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #1e293b;
+  --muted: #f1f5f9;
+  --muted-foreground: #6b7280;
+  --accent: #fff4ec;
+  --accent-foreground: #9a3f00;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  --ring: #f06500;
+
+  --brand-navy: #0f1e35;
+  --brand-coral: #ff7f6a;
+  --brand-orange: #f06500;
+  --brand-gradient: linear-gradient(90deg, #ff7f6a, #f06500);
+
+  --status-untreated: #94a3b8;
+  --status-untreated-foreground: #ffffff;
+  --status-attempting: #3b82f6;
+  --status-attempting-foreground: #ffffff;
+  --status-follow-up: #f59e0b;
+  --status-follow-up-foreground: #1e293b;
+  --status-treated: #28a745;
+  --status-treated-foreground: #ffffff;
+  --status-converted: #f06500;
+  --status-converted-foreground: #ffffff;
+  --status-not-reached: #64748b;
+  --status-not-reached-foreground: #ffffff;
+
+  --temperature-hot: #f06500;
+  --temperature-hot-foreground: #ffffff;
+  --temperature-warm: #fff1e6;
+  --temperature-warm-foreground: #9a3f00;
+  --temperature-follow-up: #fef3c7;
+  --temperature-follow-up-foreground: #92400e;
+  --temperature-cold: #e2e8f0;
+  --temperature-cold-foreground: #334155;
+  --temperature-not-reached: #e2e8f0;
+  --temperature-not-reached-foreground: #475569;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-coral: var(--brand-coral);
+  --color-brand-orange: var(--brand-orange);
+
+  --color-status-untreated: var(--status-untreated);
+  --color-status-untreated-foreground: var(--status-untreated-foreground);
+  --color-status-attempting: var(--status-attempting);
+  --color-status-attempting-foreground: var(--status-attempting-foreground);
+  --color-status-follow-up: var(--status-follow-up);
+  --color-status-follow-up-foreground: var(--status-follow-up-foreground);
+  --color-status-treated: var(--status-treated);
+  --color-status-treated-foreground: var(--status-treated-foreground);
+  --color-status-converted: var(--status-converted);
+  --color-status-converted-foreground: var(--status-converted-foreground);
+  --color-status-not-reached: var(--status-not-reached);
+  --color-status-not-reached-foreground: var(--status-not-reached-foreground);
+
+  --color-temperature-hot: var(--temperature-hot);
+  --color-temperature-hot-foreground: var(--temperature-hot-foreground);
+  --color-temperature-warm: var(--temperature-warm);
+  --color-temperature-warm-foreground: var(--temperature-warm-foreground);
+  --color-temperature-follow-up: var(--temperature-follow-up);
+  --color-temperature-follow-up-foreground: var(--temperature-follow-up-foreground);
+  --color-temperature-cold: var(--temperature-cold);
+  --color-temperature-cold-foreground: var(--temperature-cold-foreground);
+  --color-temperature-not-reached: var(--temperature-not-reached);
+  --color-temperature-not-reached-foreground: var(--temperature-not-reached-foreground);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply h-full scroll-smooth;
+  }
+  body {
+    @apply min-h-full bg-background font-sans text-foreground antialiased;
+  }
+  button,
+  a,
+  [role="button"] {
+    touch-action: manipulation;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer utilities {
+  .bg-brand-gradient {
+    background-image: var(--brand-gradient);
+  }
+  .page-shell {
+    @apply mx-auto w-full max-w-6xl space-y-6 px-4 py-5 sm:px-6 sm:py-8;
+  }
+}

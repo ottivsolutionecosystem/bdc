@@ -1,0 +1,433 @@
+// Prisma schema — CRM base + módulo de Campanhas de Ligação (campaign_*)
+// Nomenclatura genérica de propósito: nada específico de "feirão", reutilizável
+// para qualquer campanha de ligação futura (reativação, pós-venda, aniversariantes, etc).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Base mínima do CRM (reutilizada pelo módulo de campanhas)
+// ─────────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  SUPERVISOR
+  AGENT
+  SELLER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role                   UserRole
+  active                 Boolean   @default(true)
+  passwordResetTokenHash String?
+  passwordResetExpiresAt DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  createdCampaigns           Campaign[]                         @relation("CampaignCreatedBy")
+  campaignAgentOf            CampaignAgent[]
+  assignedContacts           CampaignContact[]                  @relation("ContactAssignedAgent")
+  lockedContacts             CampaignContact[]                  @relation("ContactLockedBy")
+  supervisorQueuedContacts   CampaignContact[]                  @relation("ContactSupervisorQueuedBy")
+  attempts                   CampaignContactAttempt[]
+  assignmentHistoryFrom      CampaignContactAssignmentHistory[] @relation("AssignmentFromAgent")
+  assignmentHistoryTo        CampaignContactAssignmentHistory[] @relation("AssignmentToAgent")
+  assignmentHistoryChangedBy CampaignContactAssignmentHistory[] @relation("AssignmentChangedBy")
+  transfersAsAgent           CampaignTransfer[]                 @relation("TransferAgent")
+  transfersAsSeller          CampaignTransfer[]                 @relation("TransferSeller")
+  imports                    CampaignImport[]
+  sellerOpportunities        Opportunity[]                      @relation("OpportunitySeller")
+  sellerAppointments         Appointment[]                      @relation("AppointmentSeller")
+  auditLogs                  AuditLog[]
+
+  @@map("users")
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  email     String?
+  document  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaignContacts CampaignContact[]
+  opportunities    Opportunity[]
+  appointments     Appointment[]
+
+  @@index([phone])
+  @@map("customers")
+}
+
+enum OpportunityStatus {
+  OPEN
+  WON
+  LOST
+}
+
+model Opportunity {
+  id               String            @id @default(cuid())
+  customerId       String
+  customer         Customer          @relation(fields: [customerId], references: [id])
+  sellerId         String?
+  seller           User?             @relation("OpportunitySeller", fields: [sellerId], references: [id])
+  originCampaignId String?
+  originCampaign   Campaign?         @relation(fields: [originCampaignId], references: [id])
+  status           OpportunityStatus @default(OPEN)
+  source           String
+  notes            String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  transfers CampaignTransfer[]
+
+  @@index([customerId])
+  @@index([sellerId])
+  @@index([originCampaignId])
+  @@map("opportunities")
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  DONE
+  CANCELED
+}
+
+model Appointment {
+  id                      String            @id @default(cuid())
+  customerId              String
+  customer                Customer          @relation(fields: [customerId], references: [id])
+  sellerId                String?
+  seller                  User?             @relation("AppointmentSeller", fields: [sellerId], references: [id])
+  scheduledAt             DateTime
+  notes                   String?
+  status                  AppointmentStatus @default(SCHEDULED)
+  originCampaignContactId String?           @unique
+  originCampaignContact   CampaignContact?  @relation(fields: [originCampaignContactId], references: [id])
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+
+  @@index([customerId])
+  @@index([sellerId])
+  @@index([scheduledAt])
+  @@map("appointments")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  entityType String
+  entityId   String
+  action     String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Núcleo de Campanhas de Ligação (campaign_*)
+// ─────────────────────────────────────────────────────────────────────────
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELED
+}
+
+model Campaign {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  type        String
+  status      CampaignStatus @default(DRAFT)
+  startDate   DateTime?
+  endDate     DateTime?
+  createdById String
+  createdBy   User           @relation("CampaignCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  /** URL do webhook n8n que avisa o grupo de vendedores. */
+  sellersNotifyWebhookUrl String?
+
+  agents            CampaignAgent[]
+  contacts          CampaignContact[]
+  dispositions      CampaignDisposition[]
+  imports           CampaignImport[]
+  importSessions    CampaignImportSession[]
+  distributionState CampaignDistributionState?
+  opportunities     Opportunity[]
+
+  @@index([status])
+  @@map("campaigns")
+}
+
+model CampaignAgent {
+  id            String   @id @default(cuid())
+  campaignId    String
+  campaign      Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  active        Boolean  @default(true)
+  assignedCount Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  @@unique([campaignId, userId])
+  @@index([campaignId, active])
+  @@map("campaign_agents")
+}
+
+enum DispositionCategory {
+  POSITIVE
+  CONVERSION
+  FOLLOW_UP
+  NO_INTEREST
+  NOT_REACHED
+}
+
+enum ContactTemperature {
+  HOT
+  WARM
+  FOLLOW_UP
+  COLD
+  NOT_REACHED
+}
+
+model CampaignDisposition {
+  id                  String              @id @default(cuid())
+  campaignId          String?
+  campaign            Campaign?           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  code                String
+  label               String
+  category            DispositionCategory
+  requiresNextContact Boolean             @default(false)
+  defaultTemperature  ContactTemperature
+  order               Int                 @default(0)
+  active              Boolean             @default(true)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  attempts         CampaignContactAttempt[]
+  finalForContacts CampaignContact[]        @relation("ContactFinalDisposition")
+  transfers        CampaignTransfer[]
+
+  @@unique([campaignId, code])
+  @@index([category])
+  @@map("campaign_dispositions")
+}
+
+enum ContactStatus {
+  UNTREATED
+  ATTEMPTING
+  FOLLOW_UP
+  TREATED
+  CONVERTED
+  NOT_REACHED
+}
+
+enum PurchaseTimeline {
+  NOW
+  WITHIN_30D
+  D60_90
+  NO_FORECAST
+}
+
+enum EventInterest {
+  YES
+  MAYBE
+  NO
+}
+
+model CampaignContact {
+  id         String    @id @default(cuid())
+  campaignId String
+  campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  name             String
+  phone            String
+  phoneNormalized  String
+  lastVehicle      String?
+  lastPurchaseDate DateTime?
+
+  assignedAgentId String?
+  assignedAgent   User?   @relation("ContactAssignedAgent", fields: [assignedAgentId], references: [id])
+
+  status                    ContactStatus      @default(UNTREATED)
+  temperature               ContactTemperature @default(COLD)
+  temperatureManualOverride Boolean            @default(false)
+
+  attemptsCount Int       @default(0)
+  lastAttemptAt DateTime?
+  nextContactAt DateTime?
+
+  finalDispositionId String?
+  finalDisposition   CampaignDisposition? @relation("ContactFinalDisposition", fields: [finalDispositionId], references: [id])
+  notes              String?
+
+  interestedInEvent    EventInterest?
+  stillOwnsLastVehicle Boolean?
+  interestedInTrade    Boolean?
+  currentVehicle       String?
+  purchaseTimeline     PurchaseTimeline?
+
+  appointment             Appointment?
+  transferredToSales      Boolean      @default(false)
+  sellersGroupNotifiedAt  DateTime?
+
+  lockedByUserId String?
+  lockedByUser   User?     @relation("ContactLockedBy", fields: [lockedByUserId], references: [id])
+  lockedAt       DateTime?
+  lockExpiresAt  DateTime?
+
+  supervisorQueuedAt   DateTime?
+  supervisorQueuedById String?
+  supervisorQueuedBy   User?     @relation("ContactSupervisorQueuedBy", fields: [supervisorQueuedById], references: [id])
+  supervisorQueueKind  String?
+  supervisorQueueNote  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attempts          CampaignContactAttempt[]
+  assignmentHistory CampaignContactAssignmentHistory[]
+  transfers         CampaignTransfer[]
+
+  @@index([campaignId, assignedAgentId, status])
+  @@index([campaignId, nextContactAt])
+  @@index([campaignId, status])
+  @@index([phoneNormalized])
+  @@index([finalDispositionId])
+  @@index([lockExpiresAt])
+  @@map("campaign_contacts")
+}
+
+model CampaignContactAttempt {
+  id                 String              @id @default(cuid())
+  campaignId         String
+  contactId          String
+  contact            CampaignContact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  agentId            String
+  agent              User                @relation(fields: [agentId], references: [id])
+  attemptNumber      Int
+  dispositionId      String
+  disposition        CampaignDisposition @relation(fields: [dispositionId], references: [id])
+  statusAfterAttempt ContactStatus
+  notes              String?
+  contacted          Boolean
+  nextContactAt      DateTime?
+  createdAt          DateTime            @default(now())
+
+  @@index([contactId, attemptNumber])
+  @@index([campaignId, agentId])
+  @@map("campaign_contact_attempts")
+}
+
+enum AssignmentChangeReason {
+  IMPORT
+  REDISTRIBUTE
+  MANUAL
+  AGENT_REMOVED
+}
+
+model CampaignContactAssignmentHistory {
+  id          String                 @id @default(cuid())
+  contactId   String
+  contact     CampaignContact        @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  fromAgentId String?
+  fromAgent   User?                  @relation("AssignmentFromAgent", fields: [fromAgentId], references: [id])
+  toAgentId   String?
+  toAgent     User?                  @relation("AssignmentToAgent", fields: [toAgentId], references: [id])
+  reason      AssignmentChangeReason
+  changedById String
+  changedBy   User                   @relation("AssignmentChangedBy", fields: [changedById], references: [id])
+  createdAt   DateTime               @default(now())
+
+  @@index([contactId])
+  @@map("campaign_contact_assignment_history")
+}
+
+model CampaignImport {
+  id            String   @id @default(cuid())
+  campaignId    String
+  campaign      Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  fileName      String
+  totalRows     Int
+  imported      Int
+  ignored       Int
+  invalid       Int
+  duplicated    Int
+  columnMapping Json
+  createdAt     DateTime @default(now())
+
+  @@index([campaignId])
+  @@map("campaign_imports")
+}
+
+model CampaignImportSession {
+  id         String   @id @default(cuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  userId     String
+  fileName   String
+  headers    Json
+  rows       Json
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([campaignId])
+  @@index([expiresAt])
+  @@map("campaign_import_sessions")
+}
+
+model CampaignTransfer {
+  id            String               @id @default(cuid())
+  contactId     String
+  contact       CampaignContact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  sellerId      String
+  seller        User                 @relation("TransferSeller", fields: [sellerId], references: [id])
+  agentId       String
+  agent         User                 @relation("TransferAgent", fields: [agentId], references: [id])
+  dispositionId String?
+  disposition   CampaignDisposition? @relation(fields: [dispositionId], references: [id])
+  notes         String?
+  opportunityId String?
+  createdAt     DateTime             @default(now())
+  opportunity   Opportunity?         @relation(fields: [opportunityId], references: [id])
+
+  @@index([contactId])
+  @@index([sellerId])
+  @@map("campaign_transfers")
+}
+
+// Ponteiro persistente do round robin de distribuição — garante que novas
+// importações continuem o rodízio em vez de reiniciar do primeiro agente.
+model CampaignDistributionState {
+  campaignId  String   @id
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  lastAgentId String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("campaign_distribution_state")
+}
