@@ -16,10 +16,11 @@ import { Button } from "@/components/ui/button";
 import { ContactsFilterBar } from "@/components/campaigns/contacts/contacts-filter-bar";
 import { ContactsWorkbench } from "@/components/campaigns/contacts/contacts-workbench";
 import { ExportCsvLink } from "@/components/export-csv-link";
+import { parseDispositionMetric } from "@/lib/disposition-metrics";
 import type { ContactStatus, ContactTemperature } from "@/generated/prisma/enums";
 
 function parseGroup(value: string | undefined): ContactListGroup {
-  if (value === "treated" || value === "untreated") return value;
+  if (value === "treated" || value === "untreated" || value === "all") return value;
   return "action";
 }
 
@@ -37,10 +38,12 @@ export default async function CampaignContactsPage({
   }
 
   const sp = await searchParams;
-  const group = parseGroup(sp.group);
+  const metric = parseDispositionMetric(sp.metric);
+  const group = metric ? "all" : parseGroup(sp.group);
 
   const filters: ContactListFilters = {
     group,
+    metric,
     agentId: sp.agentId,
     status: sp.status as ContactStatus | undefined,
     dispositionId: sp.disposition,
@@ -60,6 +63,9 @@ export default async function CampaignContactsPage({
     countActionableContacts(id),
   ]);
 
+  const workbenchGroup =
+    metric === "pending" ? "untreated" : metric || group === "all" ? "treated" : group;
+
   const activeAgents = campaignAgents.filter((a) => a.active).map((a) => ({ id: a.user.id, name: a.user.name }));
 
   function buildTabHref(nextGroup: string) {
@@ -73,6 +79,9 @@ export default async function CampaignContactsPage({
     <div className="page-shell">
       <Tabs value={group}>
         <TabsList>
+          <TabsTrigger value="all" asChild>
+            <Link href={buildTabHref("all")}>Todos</Link>
+          </TabsTrigger>
           <TabsTrigger value="action" asChild>
             <Link href={buildTabHref("action")}>Precisa de ação{needsAction > 0 ? ` (${needsAction})` : ""}</Link>
           </TabsTrigger>
@@ -86,7 +95,14 @@ export default async function CampaignContactsPage({
         <TabsContent value={group} />
       </Tabs>
 
-      {group === "action" && (
+      {metric && (
+        <p className="text-sm text-muted-foreground">
+          Lista filtrada pelo mesmo critério do card do dashboard. O total desta página tem que bater com o
+          número do card.
+        </p>
+      )}
+
+      {group === "action" && !metric && (
         <p className="text-sm text-muted-foreground">
           Retornos atrasados e não localizados. Devolva para a mesma agente ou mande para outra fila — o
           lead não pode ficar parado sem dono.
@@ -105,7 +121,7 @@ export default async function CampaignContactsPage({
 
       <ContactsWorkbench
         campaignId={id}
-        group={group}
+        group={workbenchGroup}
         contacts={contacts}
         eligibleAgents={activeAgents}
       />

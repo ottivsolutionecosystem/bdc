@@ -112,7 +112,7 @@ export async function exportCampaignDashboardCsv(campaignId: string) {
   ]);
 
   const summary = toCsv(
-    ["Campanha", "Status", "Base", "Tratados", "Pendentes", "Interessados", "Agendamentos", "Transferidos", "Progresso %"],
+    ["Campanha", "Status", "Base", "Tratados", "Pendentes", "Em retorno", "Interessados", "Agendamentos", "Sem interesse", "Não localizados", "Progresso %"],
     [
       [
         campaign?.name,
@@ -120,9 +120,11 @@ export async function exportCampaignDashboardCsv(campaignId: string) {
         overview.total,
         overview.treated,
         overview.pending,
+        overview.followUp,
         overview.interested,
         overview.appointments,
-        overview.transferred,
+        overview.noInterest,
+        overview.notReached,
         overview.completionPercent,
       ],
     ]

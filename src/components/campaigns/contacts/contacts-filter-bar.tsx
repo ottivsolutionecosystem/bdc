@@ -138,7 +138,7 @@ export function ContactsFilterBar({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={ALL_VALUE}>Todos os interesses</SelectItem>
-          <SelectItem value="true">Quente ou morno</SelectItem>
+          <SelectItem value="true">Interessados</SelectItem>
         </SelectContent>
       </Select>
 
@@ -151,7 +151,7 @@ export function ContactsFilterBar({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={ALL_VALUE}>Com ou sem visita</SelectItem>
-          <SelectItem value="true">Com visita agendada</SelectItem>
+          <SelectItem value="true">Visita agendada</SelectItem>
         </SelectContent>
       </Select>
 
@@ -160,11 +160,11 @@ export function ContactsFilterBar({
         onValueChange={(v) => updateParam("transferredToSales", v === "true" ? "true" : null)}
       >
         <SelectTrigger className="w-full md:w-44">
-          <SelectValue placeholder="Vendas" />
+          <SelectValue placeholder="Desfecho" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={ALL_VALUE}>Todos os encaminhamentos</SelectItem>
-          <SelectItem value="true">Encaminhado a vendas</SelectItem>
+          <SelectItem value={ALL_VALUE}>Todos os desfechos</SelectItem>
+          <SelectItem value="true">Sem interesse</SelectItem>
         </SelectContent>
       </Select>
     </>

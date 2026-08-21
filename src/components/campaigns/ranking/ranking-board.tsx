@@ -208,8 +208,8 @@ export function RankingBoard({
                   </div>
                   <p className="mt-2 text-xs text-white/60">
                     Hoje {agent.attemptsToday} lig. · {agent.successfulContactsToday} contato(s) ·{" "}
-                    {agent.interestedToday} interesse · {agent.transferredToday} vendas · {agent.appointmentsToday}{" "}
-                    visita(s) · {agent.scoreToday} pts hoje
+                    {agent.interestedToday} interesse · {agent.appointmentsToday} visita(s) · {agent.scoreToday} pts
+                    hoje
                   </p>
                 </div>
               );
@@ -221,8 +221,7 @@ export function RankingBoard({
       <p className="mt-auto flex items-center gap-2 text-xs text-white/45">
         <Trophy className="size-3.5" />
         Pontos: tratado {RANKING_SCORE_WEIGHTS.treated} · contato {RANKING_SCORE_WEIGHTS.successfulContacts} ·
-        interesse {RANKING_SCORE_WEIGHTS.interested} · vendas {RANKING_SCORE_WEIGHTS.transferred} · visita{" "}
-        {RANKING_SCORE_WEIGHTS.appointments}
+        interesse {RANKING_SCORE_WEIGHTS.interested} · visita {RANKING_SCORE_WEIGHTS.appointments}
       </p>
     </div>
   );

@@ -4,6 +4,7 @@ export type QueueStats = {
   assigned: number;
   treated: number;
   pending: number;
+  followUp: number;
   interested: number;
   appointments: number;
   followUpsToday: number;
@@ -16,6 +17,7 @@ export function QueueStatCards({ stats }: { stats: QueueStats }) {
     { label: "Minha base", value: stats.assigned },
     { label: "Tratados", value: stats.treated },
     { label: "Pendentes", value: stats.pending },
+    { label: "Em retorno", value: stats.followUp },
     { label: "Interessados", value: stats.interested },
     { label: "Agendamentos", value: stats.appointments },
     { label: "Retornos atrasados", value: stats.overdueFollowUps },

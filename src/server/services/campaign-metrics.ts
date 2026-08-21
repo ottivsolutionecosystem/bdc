@@ -1,22 +1,32 @@
 import { prisma } from "@/lib/prisma";
 import { actionableContactsWhere } from "@/lib/contact-action";
 import { startOfTodayInAppTz, APP_TIMEZONE } from "@/lib/datetime";
+import {
+  appointmentDispositionWhere,
+  interestedDispositionWhere,
+  noInterestDispositionWhere,
+  notLocatedDispositionWhere,
+  pendingContactWhere,
+  returnDispositionWhere,
+  treatedDispositionWhere,
+} from "@/lib/disposition-metrics";
 import { rankingScore, type RankingBoardAgent, type RankingBoardPayload } from "@/lib/ranking";
 
 /**
- * Fórmulas de métricas (documentadas aqui para não ficarem implícitas no código):
+ * Fórmulas de métricas (último parecer do contato):
+ *
+ * - Interessados = Positivo + Encaminhado para vendedor + Negociação aberta
+ * - Agendamentos = Visita agendada
+ * - Sem interesse = categoria Sem interesse
+ * - Não localizados = Número inválido
+ * - Em retorno = follow-up + demais não localizados
+ * - Tratados = todos os de cima, menos Em retorno
+ * - Pendentes = sem parecer
  *
  * - Taxa de tratamento = tratados / base atribuída * 100
- * - Taxa de contato = contatos com sucesso (>=1 tentativa com `contacted=true`)
- *                      / contatos únicos com ao menos 1 tentativa * 100
- *   (mede alcance real da base, não volume de ligações — mais coerente que
- *   usar o total de tentativas como denominador)
+ * - Taxa de contato = contatos com sucesso / contatos únicos com ao menos 1 tentativa * 100
  * - Taxa de interesse = interessados / contatos com sucesso * 100
  * - Taxa de agendamento = agendamentos / contatos com sucesso * 100
- * - Taxa de transferência = transferidos para vendas / contatos com sucesso * 100
- *
- * Todas as taxas retornam 0 quando o denominador é 0 (nunca dividem por zero).
- * "Interessado" = temperatura HOT ou WARM (mesma definição usada na fila da agente).
  */
 
 function pct(numerator: number, denominator: number): number {
@@ -33,32 +43,28 @@ function countByKey<T extends string>(rows: { key: T }[]): Map<T, number> {
 }
 
 export async function getCampaignOverview(campaignId: string) {
-  const [total, treated, followUp, notReached, converted, interested, appointments, transferred] =
+  const [total, treated, pending, followUp, interested, appointments, noInterest, notReached] =
     await Promise.all([
       prisma.campaignContact.count({ where: { campaignId } }),
-      prisma.campaignContact.count({ where: { campaignId, status: "TREATED" } }),
-      prisma.campaignContact.count({ where: { campaignId, status: "FOLLOW_UP" } }),
-      prisma.campaignContact.count({ where: { campaignId, status: "NOT_REACHED" } }),
-      prisma.campaignContact.count({ where: { campaignId, status: "CONVERTED" } }),
-      prisma.campaignContact.count({ where: { campaignId, temperature: { in: ["HOT", "WARM"] } } }),
-      prisma.appointment.count({ where: { originCampaignContact: { campaignId } } }),
-      prisma.campaignContact.count({ where: { campaignId, transferredToSales: true } }),
+      prisma.campaignContact.count({ where: { campaignId, finalDisposition: treatedDispositionWhere } }),
+      prisma.campaignContact.count({ where: { campaignId, ...pendingContactWhere } }),
+      prisma.campaignContact.count({ where: { campaignId, finalDisposition: returnDispositionWhere } }),
+      prisma.campaignContact.count({ where: { campaignId, finalDisposition: interestedDispositionWhere } }),
+      prisma.campaignContact.count({ where: { campaignId, finalDisposition: appointmentDispositionWhere } }),
+      prisma.campaignContact.count({ where: { campaignId, finalDisposition: noInterestDispositionWhere } }),
+      prisma.campaignContact.count({ where: { campaignId, finalDisposition: notLocatedDispositionWhere } }),
     ]);
-
-  const pending = total - treated - followUp - notReached - converted;
-  const completedCount = treated + followUp + notReached + converted;
 
   return {
     total,
     treated,
-    pending: Math.max(pending, 0),
+    pending,
     followUp,
     notReached,
-    converted,
     interested,
     appointments,
-    transferred,
-    completionPercent: pct(completedCount, total),
+    noInterest,
+    completionPercent: pct(treated + followUp, total),
   };
 }
 
@@ -68,7 +74,7 @@ export async function getAgentPerformance(campaignId: string) {
     include: { user: { select: { id: true, name: true } } },
   });
 
-  const [assignedRows, treatedRows, attemptTotalRows, attemptedDistinctRows, contactedDistinctRows, interestedRows, appointmentRows, transferRows] =
+  const [assignedRows, treatedRows, pendingRows, followUpRows, attemptTotalRows, attemptedDistinctRows, contactedDistinctRows, interestedRows, appointmentRows, noInterestRows] =
     await Promise.all([
       prisma.campaignContact.groupBy({
         by: ["assignedAgentId"],
@@ -77,7 +83,17 @@ export async function getAgentPerformance(campaignId: string) {
       }),
       prisma.campaignContact.groupBy({
         by: ["assignedAgentId"],
-        where: { campaignId, assignedAgentId: { not: null }, status: { in: ["TREATED", "CONVERTED", "NOT_REACHED"] } },
+        where: { campaignId, assignedAgentId: { not: null }, finalDisposition: treatedDispositionWhere },
+        _count: { _all: true },
+      }),
+      prisma.campaignContact.groupBy({
+        by: ["assignedAgentId"],
+        where: { campaignId, assignedAgentId: { not: null }, ...pendingContactWhere },
+        _count: { _all: true },
+      }),
+      prisma.campaignContact.groupBy({
+        by: ["assignedAgentId"],
+        where: { campaignId, assignedAgentId: { not: null }, finalDisposition: returnDispositionWhere },
         _count: { _all: true },
       }),
       prisma.campaignContactAttempt.groupBy({
@@ -95,61 +111,62 @@ export async function getAgentPerformance(campaignId: string) {
       }),
       prisma.campaignContact.groupBy({
         by: ["assignedAgentId"],
-        where: { campaignId, assignedAgentId: { not: null }, temperature: { in: ["HOT", "WARM"] } },
+        where: { campaignId, assignedAgentId: { not: null }, finalDisposition: interestedDispositionWhere },
         _count: { _all: true },
-      }),
-      prisma.appointment.findMany({
-        where: { originCampaignContact: { campaignId } },
-        select: { originCampaignContact: { select: { assignedAgentId: true } } },
       }),
       prisma.campaignContact.groupBy({
         by: ["assignedAgentId"],
-        where: { campaignId, assignedAgentId: { not: null }, transferredToSales: true },
+        where: { campaignId, assignedAgentId: { not: null }, finalDisposition: appointmentDispositionWhere },
+        _count: { _all: true },
+      }),
+      prisma.campaignContact.groupBy({
+        by: ["assignedAgentId"],
+        where: { campaignId, assignedAgentId: { not: null }, finalDisposition: noInterestDispositionWhere },
         _count: { _all: true },
       }),
     ]);
 
   const assignedMap = new Map(assignedRows.map((r) => [r.assignedAgentId as string, r._count._all]));
   const treatedMap = new Map(treatedRows.map((r) => [r.assignedAgentId as string, r._count._all]));
+  const pendingMap = new Map(pendingRows.map((r) => [r.assignedAgentId as string, r._count._all]));
+  const followUpMap = new Map(followUpRows.map((r) => [r.assignedAgentId as string, r._count._all]));
   const attemptTotalMap = new Map(attemptTotalRows.map((r) => [r.agentId, r._count._all]));
   const attemptedDistinctMap = countByKey(attemptedDistinctRows.map((r) => ({ key: r.agentId })));
   const contactedDistinctMap = countByKey(contactedDistinctRows.map((r) => ({ key: r.agentId })));
   const interestedMap = new Map(interestedRows.map((r) => [r.assignedAgentId as string, r._count._all]));
-  const appointmentMap = countByKey(
-    appointmentRows
-      .filter((r) => r.originCampaignContact?.assignedAgentId)
-      .map((r) => ({ key: r.originCampaignContact!.assignedAgentId as string }))
-  );
-  const transferMap = new Map(transferRows.map((r) => [r.assignedAgentId as string, r._count._all]));
+  const appointmentMap = new Map(appointmentRows.map((r) => [r.assignedAgentId as string, r._count._all]));
+  const noInterestMap = new Map(noInterestRows.map((r) => [r.assignedAgentId as string, r._count._all]));
 
   return agents.map((agent) => {
     const userId = agent.userId;
     const assigned = assignedMap.get(userId) ?? 0;
     const treated = treatedMap.get(userId) ?? 0;
+    const pending = pendingMap.get(userId) ?? 0;
+    const followUp = followUpMap.get(userId) ?? 0;
     const attempts = attemptTotalMap.get(userId) ?? 0;
     const attemptedDistinct = attemptedDistinctMap.get(userId) ?? 0;
     const successfulContacts = contactedDistinctMap.get(userId) ?? 0;
     const interested = interestedMap.get(userId) ?? 0;
     const appointments = appointmentMap.get(userId) ?? 0;
-    const transferred = transferMap.get(userId) ?? 0;
+    const noInterest = noInterestMap.get(userId) ?? 0;
 
     return {
       agentId: userId,
       agentName: agent.user.name,
       assigned,
       treated,
-      pending: Math.max(assigned - treated, 0),
+      pending,
+      followUp,
       attempts,
       successfulContacts,
       interested,
       appointments,
-      transferred,
+      noInterest,
       treatmentRate: pct(treated, assigned),
       contactRate: pct(successfulContacts, attemptedDistinct),
       interestRate: pct(interested, successfulContacts),
       appointmentRate: pct(appointments, successfulContacts),
-      transferRate: pct(transferred, successfulContacts),
-      score: rankingScore({ treated, successfulContacts, interested, transferred, appointments }),
+      score: rankingScore({ treated, successfulContacts, interested, appointments }),
     };
   });
 }
@@ -182,25 +199,17 @@ export async function getDispositionBreakdown(campaignId: string) {
 }
 
 export async function getCampaignFunnel(campaignId: string) {
-  const [
-    baseImported,
-    attemptsMade,
-    contactedRows,
-    interested,
-    appointments,
-    transferred,
-    negotiationOpen,
-    won,
-  ] = await Promise.all([
-    prisma.campaignContact.count({ where: { campaignId } }),
-    prisma.campaignContactAttempt.count({ where: { campaignId } }),
-    prisma.campaignContactAttempt.groupBy({ by: ["contactId"], where: { campaignId, contacted: true } }),
-    prisma.campaignContact.count({ where: { campaignId, temperature: { in: ["HOT", "WARM"] } } }),
-    prisma.appointment.count({ where: { originCampaignContact: { campaignId } } }),
-    prisma.campaignContact.count({ where: { campaignId, transferredToSales: true } }),
-    prisma.opportunity.count({ where: { originCampaignId: campaignId, status: "OPEN" } }),
-    prisma.opportunity.count({ where: { originCampaignId: campaignId, status: "WON" } }),
-  ]);
+  const [baseImported, attemptsMade, contactedRows, interested, appointments, noInterest, negotiationOpen, won] =
+    await Promise.all([
+      prisma.campaignContact.count({ where: { campaignId } }),
+      prisma.campaignContactAttempt.count({ where: { campaignId } }),
+      prisma.campaignContactAttempt.groupBy({ by: ["contactId"], where: { campaignId, contacted: true } }),
+      prisma.campaignContact.count({ where: { campaignId, finalDisposition: interestedDispositionWhere } }),
+      prisma.campaignContact.count({ where: { campaignId, finalDisposition: appointmentDispositionWhere } }),
+      prisma.campaignContact.count({ where: { campaignId, finalDisposition: noInterestDispositionWhere } }),
+      prisma.opportunity.count({ where: { originCampaignId: campaignId, status: "OPEN" } }),
+      prisma.opportunity.count({ where: { originCampaignId: campaignId, status: "WON" } }),
+    ]);
 
   return [
     { stage: "Base importada", value: baseImported },
@@ -208,7 +217,7 @@ export async function getCampaignFunnel(campaignId: string) {
     { stage: "Clientes contatados", value: contactedRows.length },
     { stage: "Interessados", value: interested },
     { stage: "Agendamentos", value: appointments },
-    { stage: "Transferidos para vendas", value: transferred },
+    { stage: "Sem interesse", value: noInterest },
     { stage: "Negociação", value: negotiationOpen },
     { stage: "Venda", value: won },
   ];
@@ -233,7 +242,6 @@ export async function getCampaignRanking(campaignId: string): Promise<RankingBoa
     contactedTodayRows,
     treatedTodayRows,
     interestedTodayRows,
-    transferredTodayRows,
     appointmentsTodayRows,
   ] = await Promise.all([
     prisma.campaign.findUniqueOrThrow({
@@ -256,7 +264,7 @@ export async function getCampaignRanking(campaignId: string): Promise<RankingBoa
         campaignId,
         assignedAgentId: { not: null },
         lastAttemptAt: { gte: todayStart },
-        status: { in: ["TREATED", "CONVERTED", "NOT_REACHED"] },
+        finalDisposition: treatedDispositionWhere,
       },
       _count: { _all: true },
     }),
@@ -266,18 +274,19 @@ export async function getCampaignRanking(campaignId: string): Promise<RankingBoa
         campaignId,
         assignedAgentId: { not: null },
         lastAttemptAt: { gte: todayStart },
-        temperature: { in: ["HOT", "WARM"] },
+        finalDisposition: interestedDispositionWhere,
       },
       _count: { _all: true },
     }),
-    prisma.campaignTransfer.groupBy({
-      by: ["agentId"],
-      where: { createdAt: { gte: todayStart }, contact: { campaignId } },
+    prisma.campaignContact.groupBy({
+      by: ["assignedAgentId"],
+      where: {
+        campaignId,
+        assignedAgentId: { not: null },
+        lastAttemptAt: { gte: todayStart },
+        finalDisposition: appointmentDispositionWhere,
+      },
       _count: { _all: true },
-    }),
-    prisma.appointment.findMany({
-      where: { originCampaignContact: { campaignId }, createdAt: { gte: todayStart } },
-      select: { originCampaignContact: { select: { assignedAgentId: true } } },
     }),
   ]);
 
@@ -289,11 +298,8 @@ export async function getCampaignRanking(campaignId: string): Promise<RankingBoa
   const interestedTodayMap = new Map(
     interestedTodayRows.map((row) => [row.assignedAgentId as string, row._count._all])
   );
-  const transferredTodayMap = new Map(transferredTodayRows.map((row) => [row.agentId, row._count._all]));
-  const appointmentsTodayMap = countByKey(
-    appointmentsTodayRows
-      .filter((row) => row.originCampaignContact?.assignedAgentId)
-      .map((row) => ({ key: row.originCampaignContact!.assignedAgentId as string }))
+  const appointmentsTodayMap = new Map(
+    appointmentsTodayRows.map((row) => [row.assignedAgentId as string, row._count._all])
   );
 
   const agentsUnranked = performance.map((row) => {
@@ -301,7 +307,6 @@ export async function getCampaignRanking(campaignId: string): Promise<RankingBoa
     const successfulContactsToday = contactedTodayMap.get(row.agentId) ?? 0;
     const treatedToday = treatedTodayMap.get(row.agentId) ?? 0;
     const interestedToday = interestedTodayMap.get(row.agentId) ?? 0;
-    const transferredToday = transferredTodayMap.get(row.agentId) ?? 0;
     const appointmentsToday = appointmentsTodayMap.get(row.agentId) ?? 0;
     return {
       agentId: row.agentId,
@@ -309,11 +314,12 @@ export async function getCampaignRanking(campaignId: string): Promise<RankingBoa
       assigned: row.assigned,
       treated: row.treated,
       pending: row.pending,
+      followUp: row.followUp,
       attempts: row.attempts,
       successfulContacts: row.successfulContacts,
       interested: row.interested,
       appointments: row.appointments,
-      transferred: row.transferred,
+      noInterest: row.noInterest,
       treatmentRate: row.treatmentRate,
       contactRate: row.contactRate,
       score: row.score,
@@ -321,13 +327,11 @@ export async function getCampaignRanking(campaignId: string): Promise<RankingBoa
       successfulContactsToday,
       treatedToday,
       interestedToday,
-      transferredToday,
       appointmentsToday,
       scoreToday: rankingScore({
         treated: treatedToday,
         successfulContacts: successfulContactsToday,
         interested: interestedToday,
-        transferred: transferredToday,
         appointments: appointmentsToday,
       }),
     };
@@ -347,7 +351,6 @@ export async function getCampaignRanking(campaignId: string): Promise<RankingBoa
       treatedToday: agents.reduce((sum, row) => sum + row.treatedToday, 0),
       interestedToday: agents.reduce((sum, row) => sum + row.interestedToday, 0),
       appointmentsToday: agents.reduce((sum, row) => sum + row.appointmentsToday, 0),
-      transferredToday: agents.reduce((sum, row) => sum + row.transferredToday, 0),
       scoreToday: agents.reduce((sum, row) => sum + row.scoreToday, 0),
       score: agents.reduce((sum, row) => sum + row.score, 0),
     },

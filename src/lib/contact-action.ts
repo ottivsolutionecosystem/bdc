@@ -1,7 +1,7 @@
 import type { Prisma } from "@/generated/prisma/client";
 import type { ContactStatus } from "@/generated/prisma/enums";
 
-export type ContactListGroup = "untreated" | "treated" | "action";
+export type ContactListGroup = "untreated" | "treated" | "action" | "all";
 
 /** Status que ainda não têm desfecho (quer / não quer / convertido). */
 export const REOPENABLE_STATUSES: ContactStatus[] = [

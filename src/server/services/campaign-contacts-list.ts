@@ -2,6 +2,13 @@ import type { Prisma } from "@/generated/prisma/client";
 import type { ContactStatus, ContactTemperature } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { actionableContactsWhere, type ContactListGroup } from "@/lib/contact-action";
+import {
+  appointmentDispositionWhere,
+  contactWhereForMetric,
+  interestedDispositionWhere,
+  noInterestDispositionWhere,
+  type DispositionMetric,
+} from "@/lib/disposition-metrics";
 
 const UNTREATED_STATUSES: ContactStatus[] = ["UNTREATED", "ATTEMPTING", "FOLLOW_UP"];
 const TREATED_STATUSES: ContactStatus[] = ["TREATED", "CONVERTED", "NOT_REACHED"];
@@ -19,6 +26,7 @@ export type ContactListFilters = {
   interested?: boolean;
   hasAppointment?: boolean;
   transferredToSales?: boolean;
+  metric?: DispositionMetric;
   attemptNumber?: number;
   periodStart?: string;
   periodEnd?: string;
@@ -32,10 +40,13 @@ export async function listContactsFiltered(campaignId: string, filters: ContactL
 
   const clauses: Prisma.CampaignContactWhereInput[] = [{ campaignId }];
 
-  if (filters.group === "action") {
+  if (filters.metric) {
+    clauses.push(contactWhereForMetric(filters.metric));
+    if (filters.status) clauses.push({ status: filters.status });
+  } else if (filters.group === "action") {
     clauses.push(actionableContactsWhere(campaignId));
     if (filters.status) clauses.push({ status: filters.status });
-  } else {
+  } else if (filters.group !== "all") {
     clauses.push({
       status: {
         in: filters.status
@@ -45,22 +56,18 @@ export async function listContactsFiltered(campaignId: string, filters: ContactL
             : UNTREATED_STATUSES,
       },
     });
+  } else if (filters.status) {
+    clauses.push({ status: filters.status });
   }
 
   if (filters.agentId) clauses.push({ assignedAgentId: filters.agentId });
   if (filters.dispositionId) clauses.push({ finalDispositionId: filters.dispositionId });
   if (filters.vehicle) clauses.push({ lastVehicle: { contains: filters.vehicle, mode: "insensitive" } });
 
-  const hotOrWarm: ContactTemperature[] = ["HOT", "WARM"];
-  if (filters.temperature && filters.interested) {
-    clauses.push({ temperature: filters.temperature }, { temperature: { in: hotOrWarm } });
-  } else if (filters.temperature) {
-    clauses.push({ temperature: filters.temperature });
-  } else if (filters.interested) {
-    clauses.push({ temperature: { in: hotOrWarm } });
-  }
-  if (filters.hasAppointment) clauses.push({ appointment: { isNot: null } });
-  if (filters.transferredToSales) clauses.push({ transferredToSales: true });
+  if (filters.temperature) clauses.push({ temperature: filters.temperature });
+  if (filters.interested) clauses.push({ finalDisposition: interestedDispositionWhere });
+  if (filters.hasAppointment) clauses.push({ finalDisposition: appointmentDispositionWhere });
+  if (filters.transferredToSales) clauses.push({ finalDisposition: noInterestDispositionWhere });
   if (filters.attemptNumber) clauses.push({ attemptsCount: filters.attemptNumber });
 
   if (filters.periodStart || filters.periodEnd) {
@@ -89,9 +96,9 @@ export async function listContactsFiltered(campaignId: string, filters: ContactL
     prisma.campaignContact.findMany({
       where,
       orderBy:
-        filters.group === "action"
+        filters.group === "action" && !filters.metric
           ? [{ nextContactAt: "asc" }, { lastAttemptAt: "desc" }]
-          : filters.group === "treated"
+          : filters.group === "treated" || filters.metric
             ? { lastAttemptAt: "desc" }
             : { createdAt: "asc" },
       skip: (page - 1) * pageSize,

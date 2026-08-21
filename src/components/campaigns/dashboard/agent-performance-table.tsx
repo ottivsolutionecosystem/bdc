@@ -14,16 +14,16 @@ export type AgentPerformanceRow = {
   assigned: number;
   treated: number;
   pending: number;
+  followUp: number;
   attempts: number;
   successfulContacts: number;
   interested: number;
   appointments: number;
-  transferred: number;
+  noInterest: number;
   treatmentRate: number;
   contactRate: number;
   interestRate: number;
   appointmentRate: number;
-  transferRate: number;
   score: number;
 };
 
@@ -60,6 +60,10 @@ export function AgentPerformanceTable({ rows }: { rows: AgentPerformanceRow[] })
                       <dd className="tabular-nums">{row.pending}</dd>
                     </div>
                     <div>
+                      <dt className="text-muted-foreground">Em retorno</dt>
+                      <dd className="tabular-nums">{row.followUp}</dd>
+                    </div>
+                    <div>
                       <dt className="text-muted-foreground">Contatos</dt>
                       <dd className="tabular-nums">{row.successfulContacts}</dd>
                     </div>
@@ -87,11 +91,12 @@ export function AgentPerformanceTable({ rows }: { rows: AgentPerformanceRow[] })
                 <TableHead className="text-right">Base</TableHead>
                 <TableHead className="text-right">Tratados</TableHead>
                 <TableHead className="text-right">Pendentes</TableHead>
+                <TableHead className="text-right">Em retorno</TableHead>
                 <TableHead className="text-right">Tentativas</TableHead>
                 <TableHead className="text-right">Contatos efetivos</TableHead>
                 <TableHead className="text-right">Interessados</TableHead>
                 <TableHead className="text-right">Agendamentos</TableHead>
-                <TableHead className="text-right">Transferências</TableHead>
+                <TableHead className="text-right">Sem interesse</TableHead>
                 <TableHead className="text-right">Taxa tratamento</TableHead>
                 <TableHead className="text-right">Taxa contato</TableHead>
                 <TableHead className="text-right">Taxa interesse</TableHead>
@@ -106,11 +111,12 @@ export function AgentPerformanceTable({ rows }: { rows: AgentPerformanceRow[] })
                   <TableCell className="text-right tabular-nums">{row.assigned}</TableCell>
                   <TableCell className="text-right tabular-nums">{row.treated}</TableCell>
                   <TableCell className="text-right tabular-nums">{row.pending}</TableCell>
+                  <TableCell className="text-right tabular-nums">{row.followUp}</TableCell>
                   <TableCell className="text-right tabular-nums">{row.attempts}</TableCell>
                   <TableCell className="text-right tabular-nums">{row.successfulContacts}</TableCell>
                   <TableCell className="text-right tabular-nums">{row.interested}</TableCell>
                   <TableCell className="text-right tabular-nums">{row.appointments}</TableCell>
-                  <TableCell className="text-right tabular-nums">{row.transferred}</TableCell>
+                  <TableCell className="text-right tabular-nums">{row.noInterest}</TableCell>
                   <TableCell className="text-right tabular-nums">{row.treatmentRate}%</TableCell>
                   <TableCell className="text-right tabular-nums">{row.contactRate}%</TableCell>
                   <TableCell className="text-right tabular-nums">{row.interestRate}%</TableCell>

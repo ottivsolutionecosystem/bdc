@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireUser } from "@/lib/permissions";
 import { handleApiError } from "@/lib/api-error";
 import { assertCampaignAccess, resolveEffectiveAgentFilter } from "@/server/services/campaign-access";
+import { parseDispositionMetric } from "@/lib/disposition-metrics";
 import { listContactsFiltered, type ContactListFilters } from "@/server/services/campaign-contacts-list";
 import type { ContactStatus, ContactTemperature } from "@/generated/prisma/enums";
 
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     const search = request.nextUrl.searchParams;
     const groupParam = search.get("group");
     const filters: ContactListFilters = {
-      group: groupParam === "treated" || groupParam === "action" ? groupParam : "untreated",
+      group: groupParam === "treated" || groupParam === "action" || groupParam === "all" ? groupParam : "untreated",
       agentId: resolveEffectiveAgentFilter(user, search.get("agentId")),
       status: (search.get("status") as ContactStatus) || undefined,
       dispositionId: search.get("disposition") || undefined,
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       interested: search.get("interested") === "true",
       hasAppointment: search.get("hasAppointment") === "true",
       transferredToSales: search.get("transferredToSales") === "true",
+      metric: parseDispositionMetric(search.get("metric")),
       attemptNumber: search.get("attempt") ? Number(search.get("attempt")) : undefined,
       periodStart: search.get("periodStart") || undefined,
       periodEnd: search.get("periodEnd") || undefined,

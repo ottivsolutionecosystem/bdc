@@ -8,6 +8,13 @@ import { recordAudit } from "@/server/services/audit";
 import { assertCampaignOperable } from "@/lib/campaign-lifecycle";
 import { isSellersNotifyDispositionCategory } from "@/lib/sellers-notify";
 import { campaignHasSellersNotifyWebhook, notifySellersGroup } from "@/server/services/sellers-notify";
+import {
+  appointmentDispositionWhere,
+  interestedDispositionWhere,
+  pendingContactWhere,
+  returnDispositionWhere,
+  treatedDispositionWhere,
+} from "@/lib/disposition-metrics";
 import type { SubmitAttemptInput } from "@/schemas/attempt";
 
 const LOCK_DURATION_MS = 10 * 60 * 1000; // 10 minutos: tempo de sobra para ligar e preencher o parecer
@@ -261,24 +268,23 @@ export async function getAgentQueueStats(userId: string, campaignId: string) {
   const todayStart = startOfTodayInAppTz(now);
   const todayEnd = startOfTomorrowInAppTz(now);
 
-  const [assigned, treated, pending, interested, appointments, followUpsToday, overdueFollowUps, supervisorQueued] =
+  const [assigned, treated, pending, followUp, interested, appointments, followUpsToday, overdueFollowUps, supervisorQueued] =
     await Promise.all([
     prisma.campaignContact.count({ where: { campaignId, assignedAgentId: userId } }),
     prisma.campaignContact.count({
-      where: { campaignId, assignedAgentId: userId, status: { in: ["TREATED", "CONVERTED", "NOT_REACHED"] } },
+      where: { campaignId, assignedAgentId: userId, finalDisposition: treatedDispositionWhere },
     }),
     prisma.campaignContact.count({
-      where: { campaignId, assignedAgentId: userId, status: { in: ACTIVE_STATUSES } },
+      where: { campaignId, assignedAgentId: userId, ...pendingContactWhere },
     }),
     prisma.campaignContact.count({
-      where: {
-        campaignId,
-        assignedAgentId: userId,
-        temperature: { in: ["HOT", "WARM"] },
-      },
+      where: { campaignId, assignedAgentId: userId, finalDisposition: returnDispositionWhere },
     }),
-    prisma.appointment.count({
-      where: { originCampaignContact: { campaignId, assignedAgentId: userId } },
+    prisma.campaignContact.count({
+      where: { campaignId, assignedAgentId: userId, finalDisposition: interestedDispositionWhere },
+    }),
+    prisma.campaignContact.count({
+      where: { campaignId, assignedAgentId: userId, finalDisposition: appointmentDispositionWhere },
     }),
     prisma.campaignContact.count({
       where: {
@@ -306,7 +312,7 @@ export async function getAgentQueueStats(userId: string, campaignId: string) {
     }),
   ]);
 
-  return { assigned, treated, pending, interested, appointments, followUpsToday, overdueFollowUps, supervisorQueued };
+  return { assigned, treated, pending, followUp, interested, appointments, followUpsToday, overdueFollowUps, supervisorQueued };
 }
 
 export async function overrideContactTemperature(
