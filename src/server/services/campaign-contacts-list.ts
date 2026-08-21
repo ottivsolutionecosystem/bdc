@@ -12,6 +12,11 @@ import {
 
 const UNTREATED_STATUSES: ContactStatus[] = ["UNTREATED", "ATTEMPTING", "FOLLOW_UP"];
 const TREATED_STATUSES: ContactStatus[] = ["TREATED", "CONVERTED", "NOT_REACHED"];
+const SEARCH_MAX_LENGTH = 100;
+
+function normalizeSearchTerm(value: string) {
+  return value.trim().slice(0, SEARCH_MAX_LENGTH);
+}
 
 export type { ContactListGroup };
 
@@ -80,14 +85,31 @@ export async function listContactsFiltered(campaignId: string, filters: ContactL
   }
 
   if (filters.search) {
-    const digits = filters.search.replace(/\D/g, "");
-    clauses.push({
-      OR: [
-        { name: { contains: filters.search, mode: "insensitive" } },
-        { lastVehicle: { contains: filters.search, mode: "insensitive" } },
-        ...(digits ? [{ phoneNormalized: { contains: digits } }] : []),
-      ],
-    });
+    const term = normalizeSearchTerm(filters.search);
+    if (term) {
+      const digits = term.replace(/\D/g, "");
+      const text = { contains: term, mode: "insensitive" as const };
+      clauses.push({
+        OR: [
+          { name: text },
+          { phone: text },
+          { lastVehicle: text },
+          { currentVehicle: text },
+          { notes: text },
+          { supervisorQueueNote: text },
+          { assignedAgent: { name: text } },
+          { finalDisposition: { label: text } },
+          { customer: { name: text } },
+          { customer: { email: text } },
+          { customer: { document: text } },
+          { appointment: { notes: text } },
+          { appointment: { seller: { name: text } } },
+          { attempts: { some: { notes: text } } },
+          { attempts: { some: { disposition: { label: text } } } },
+          ...(digits ? [{ phoneNormalized: { contains: digits } }] : []),
+        ],
+      });
+    }
   }
 
   const where: Prisma.CampaignContactWhereInput = { AND: clauses };

@@ -3,15 +3,20 @@ import type { ContactStatus } from "@/generated/prisma/enums";
 
 export type ContactListGroup = "untreated" | "treated" | "action" | "all";
 
-/** Status que ainda não têm desfecho (quer / não quer / convertido). */
+/** Status que o supervisor pode devolver à fila. Tratado e convertido entram: o parecer é zerado. */
 export const REOPENABLE_STATUSES: ContactStatus[] = [
   "UNTREATED",
   "ATTEMPTING",
   "FOLLOW_UP",
   "NOT_REACHED",
+  "TREATED",
+  "CONVERTED",
 ];
 
 export const CLOSED_STATUSES: ContactStatus[] = ["TREATED", "CONVERTED"];
+
+/** Encerrados: supervisor corrige o parecer sem devolver à fila. */
+export const CORRECTABLE_STATUSES: ContactStatus[] = ["TREATED", "CONVERTED", "NOT_REACHED"];
 
 /**
  * Leads que o supervisor precisa decidir: devolver à mesma fila ou

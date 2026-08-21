@@ -17,5 +17,10 @@ export const requeueContactsSchema = z.object({
   note: noteSchema,
 });
 
+export const updateContactDispositionSchema = z.object({
+  dispositionId: z.string().cuid(),
+});
+
 export type ReopenContactsInput = z.infer<typeof reopenContactsSchema>;
 export type RequeueContactsInput = z.infer<typeof requeueContactsSchema>;
+export type UpdateContactDispositionInput = z.infer<typeof updateContactDispositionSchema>;

@@ -37,8 +37,8 @@ import { MoveContactAction } from "@/components/campaigns/contacts/move-contact-
 import { ContactNameButton } from "@/components/campaigns/contacts/contact-name-button";
 import { OverrideTemperature } from "@/components/campaigns/contacts/override-temperature";
 import { EVENT_INTEREST_LABELS } from "@/lib/campaign-labels";
-import { actionReasonLabel, REOPENABLE_STATUSES, type ContactListGroup } from "@/lib/contact-action";
-import type { ContactStatus, ContactTemperature, EventInterest } from "@/generated/prisma/enums";
+import { actionReasonLabel, CORRECTABLE_STATUSES, REOPENABLE_STATUSES, type ContactListGroup } from "@/lib/contact-action";
+import type { ContactStatus, ContactTemperature, DispositionCategory, EventInterest } from "@/generated/prisma/enums";
 
 export type ContactRow = {
   id: string;
@@ -57,11 +57,73 @@ export type ContactRow = {
   appointment: { id: string; scheduledAt: Date; seller: { name: string } | null } | null;
 };
 
+export type WorkbenchDisposition = {
+  id: string;
+  label: string;
+  category: DispositionCategory;
+};
+
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
 const ROTATE_VALUE = "__rotate__";
 
 function formatDate(date: Date | null) {
   return date ? dateFormatter.format(new Date(date)) : "—";
+}
+
+function ChangeDispositionSelect({
+  campaignId,
+  contactId,
+  currentId,
+  dispositions,
+}: {
+  campaignId: string;
+  contactId: string;
+  currentId: string | null;
+  dispositions: WorkbenchDisposition[];
+}) {
+  const router = useRouter();
+  const [saving, setSaving] = useState(false);
+  const options = dispositions.filter(
+    (item) => item.category !== "FOLLOW_UP" || item.id === currentId
+  );
+
+  async function handleChange(dispositionId: string) {
+    if (dispositionId === currentId) return;
+    setSaving(true);
+    try {
+      const response = await fetch(`/api/campaigns/${campaignId}/contacts/${contactId}/disposition`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dispositionId }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        toast.error(data?.error ?? "Não foi possível alterar o parecer.");
+        return;
+      }
+      toast.success("Parecer atualizado. O lead continua encerrado.");
+      router.refresh();
+    } catch {
+      toast.error("Não foi possível alterar o parecer.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Select value={currentId ?? undefined} onValueChange={handleChange} disabled={saving}>
+      <SelectTrigger className="h-8 w-full min-w-40 max-w-56" size="sm">
+        <SelectValue placeholder={saving ? "Salvando..." : "Sem parecer"} />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((item) => (
+          <SelectItem key={item.id} value={item.id} disabled={item.category === "FOLLOW_UP"}>
+            {item.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 }
 
 function toDatetimeLocal(date = new Date()) {
@@ -77,6 +139,32 @@ function isReopenable(status: ContactStatus) {
   return REOPENABLE_STATUSES.includes(status);
 }
 
+function canCorrectDisposition(status: ContactStatus) {
+  return CORRECTABLE_STATUSES.includes(status);
+}
+
+function DispositionCell({
+  campaignId,
+  contact,
+  dispositions,
+}: {
+  campaignId: string;
+  contact: ContactRow;
+  dispositions: WorkbenchDisposition[];
+}) {
+  if (!canCorrectDisposition(contact.status)) {
+    return contact.finalDisposition?.label ?? "—";
+  }
+  return (
+    <ChangeDispositionSelect
+      campaignId={campaignId}
+      contactId={contact.id}
+      currentId={contact.finalDisposition?.id ?? null}
+      dispositions={dispositions}
+    />
+  );
+}
+
 function ContactActions({
   campaignId,
   contact,
@@ -90,13 +178,10 @@ function ContactActions({
   loading: boolean;
   onReopen: (ids: string[]) => void;
 }) {
-  if (!isReopenable(contact.status)) {
-    return <span className="text-xs text-muted-foreground">Encerrado</span>;
-  }
   return (
     <div className="flex flex-wrap justify-end gap-2">
       <Button variant="ghost" size="sm" disabled={loading} onClick={() => onReopen([contact.id])}>
-        Mesma fila
+        Voltar à fila
       </Button>
       {eligibleAgents.length > 0 && (
         <MoveContactAction
@@ -118,6 +203,7 @@ function ContactCard({
   canAct,
   loading,
   eligibleAgents,
+  dispositions,
   onToggle,
   onReopen,
 }: {
@@ -128,6 +214,7 @@ function ContactCard({
   canAct: boolean;
   loading: boolean;
   eligibleAgents: { id: string; name: string }[];
+  dispositions: WorkbenchDisposition[];
   onToggle: (id: string, checked: boolean) => void;
   onReopen: (ids: string[]) => void;
 }) {
@@ -170,7 +257,9 @@ function ContactCard({
           <>
             <div>
               <dt className="text-muted-foreground">Parecer</dt>
-              <dd>{contact.finalDisposition?.label ?? "—"}</dd>
+              <dd>
+                <DispositionCell campaignId={campaignId} contact={contact} dispositions={dispositions} />
+              </dd>
             </div>
             <div>
               <dt className="text-muted-foreground">Tratado</dt>
@@ -202,11 +291,13 @@ export function ContactsWorkbench({
   group,
   contacts,
   eligibleAgents,
+  dispositions,
 }: {
   campaignId: string;
   group: ContactListGroup;
   contacts: ContactRow[];
   eligibleAgents: { id: string; name: string }[];
+  dispositions: WorkbenchDisposition[];
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState<string[]>([]);
@@ -268,6 +359,8 @@ export function ContactsWorkbench({
       setSelected([]);
       setReopenOpen(false);
       router.refresh();
+    } catch {
+      toast.error("Não foi possível devolver à fila.");
     } finally {
       setLoading(false);
     }
@@ -295,6 +388,8 @@ export function ContactsWorkbench({
       setSelected([]);
       setRequeueOpen(false);
       router.refresh();
+    } catch {
+      toast.error("Não foi possível redistribuir.");
     } finally {
       setLoading(false);
     }
@@ -316,7 +411,7 @@ export function ContactsWorkbench({
         <p className="text-sm text-muted-foreground">
           {selected.length > 0
             ? `${selected.length} lead(s) selecionado(s)`
-            : "Selecione leads indefinidos para devolver à mesma fila ou redistribuir."}
+            : "Selecione leads para devolver à fila (o parecer é zerado) ou redistribuir."}
         </p>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -325,7 +420,7 @@ export function ContactsWorkbench({
             disabled={selected.length === 0 || loading}
             onClick={() => openReopen(selected)}
           >
-            Mesma fila
+            Mesma fila (sem parecer)
           </Button>
           <Button size="sm" disabled={selected.length === 0 || loading} onClick={() => openRequeue(selected)}>
             Redistribuir
@@ -344,6 +439,7 @@ export function ContactsWorkbench({
             canAct={isReopenable(contact.status)}
             loading={loading}
             eligibleAgents={eligibleAgents}
+            dispositions={dispositions}
             onToggle={toggleOne}
             onReopen={openReopen}
           />
@@ -399,7 +495,11 @@ export function ContactsWorkbench({
                   {group !== "treated" && <TableCell>{contact.lastVehicle ?? "—"}</TableCell>}
                   <TableCell>{contact.assignedAgent?.name ?? "—"}</TableCell>
                   {group === "action" && <TableCell>{actionReasonLabel(contact.status)}</TableCell>}
-                  {group === "treated" && <TableCell>{contact.finalDisposition?.label ?? "—"}</TableCell>}
+                  {group === "treated" && (
+                    <TableCell>
+                      <DispositionCell campaignId={campaignId} contact={contact} dispositions={dispositions} />
+                    </TableCell>
+                  )}
                   {group === "treated" && (
                     <TableCell>
                       <OverrideTemperature
@@ -448,9 +548,10 @@ export function ContactsWorkbench({
       <Dialog open={reopenOpen} onOpenChange={setReopenOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Devolver à mesma fila</DialogTitle>
+            <DialogTitle>Devolver à fila sem parecer</DialogTitle>
             <DialogDescription>
-              {targetIds.length} lead(s) voltam para a agente atual. A operação puxa na data informada.
+              {targetIds.length} lead(s) voltam para a agente atual. O parecer atual é apagado e o lead entra
+              de novo como pendente.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -479,7 +580,7 @@ export function ContactsWorkbench({
               Cancelar
             </Button>
             <Button disabled={loading || !nextContactLocal} onClick={reopen}>
-              {loading ? "Devolvendo..." : "Devolver à fila"}
+              {loading ? "Devolvendo..." : "Zerar parecer e devolver"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -490,7 +591,7 @@ export function ContactsWorkbench({
           <DialogHeader>
             <DialogTitle>Redistribuir para outra fila</DialogTitle>
             <DialogDescription>
-              {targetIds.length} lead(s) voltam para a operação. O rodízio evita quem já estava com o
+              {targetIds.length} lead(s) voltam para a operação sem parecer. O rodízio evita quem já estava com o
               contato, se houver outra agente.
             </DialogDescription>
           </DialogHeader>

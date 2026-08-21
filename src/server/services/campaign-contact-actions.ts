@@ -1,11 +1,12 @@
 import type { Prisma } from "@/generated/prisma/client";
+import type { ContactStatus } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api-error";
 import { requireSupervisorOrAdmin, type SessionUser } from "@/lib/permissions";
 import { recordAudit } from "@/server/services/audit";
 import { getCampaignOrThrow } from "@/server/services/campaign";
 import { assertCampaignAcceptsSetup } from "@/lib/campaign-lifecycle";
-import { REOPENABLE_STATUSES, type SupervisorQueueKind } from "@/lib/contact-action";
+import { CORRECTABLE_STATUSES, REOPENABLE_STATUSES, type SupervisorQueueKind } from "@/lib/contact-action";
 import { chunkArray } from "@/lib/array";
 
 const UPDATE_CHUNK = 200;
@@ -19,6 +20,11 @@ export function supervisorQueueUpdate(params: {
   return {
     status: "FOLLOW_UP",
     nextContactAt: params.nextContactAt,
+    finalDispositionId: null,
+    attemptsCount: 0,
+    temperature: "COLD",
+    temperatureManualOverride: false,
+    transferredToSales: false,
     lockedByUserId: null,
     lockedAt: null,
     lockExpiresAt: null,
@@ -191,4 +197,77 @@ export async function requeueContactsToOtherAgents(
   });
 
   return { requeued: contacts.length };
+}
+
+function statusAfterCorrectedDisposition(category: string): ContactStatus {
+  switch (category) {
+    case "CONVERSION":
+      return "CONVERTED";
+    case "NOT_REACHED":
+      return "NOT_REACHED";
+    case "POSITIVE":
+    case "NO_INTEREST":
+      return "TREATED";
+    default:
+      return "TREATED";
+  }
+}
+
+/** Troca o parecer sem devolver o lead à fila. Follow-up não entra: isso é voltar à fila. */
+export async function correctContactDisposition(
+  user: SessionUser,
+  campaignId: string,
+  contactId: string,
+  dispositionId: string
+) {
+  requireSupervisorOrAdmin(user);
+  const campaign = await getCampaignOrThrow(campaignId);
+  assertCampaignAcceptsSetup(campaign.status);
+
+  const contact = await prisma.campaignContact.findUnique({ where: { id: contactId } });
+  if (!contact || contact.campaignId !== campaignId) {
+    throw new ApiError(404, "Contato não encontrado nesta campanha");
+  }
+  if (!CORRECTABLE_STATUSES.includes(contact.status)) {
+    throw new ApiError(422, "Só é possível corrigir o parecer de um lead encerrado.");
+  }
+
+  const disposition = await prisma.campaignDisposition.findUnique({ where: { id: dispositionId } });
+  if (!disposition || !disposition.active || (disposition.campaignId && disposition.campaignId !== campaignId)) {
+    throw new ApiError(422, "Parecer inválido para esta campanha");
+  }
+  if (disposition.category === "FOLLOW_UP") {
+    throw new ApiError(422, "Para retorno, use voltar à fila. O parecer é zerado.");
+  }
+
+  const status = statusAfterCorrectedDisposition(disposition.category);
+  const temperature = contact.temperatureManualOverride ? contact.temperature : disposition.defaultTemperature;
+
+  const updated = await prisma.campaignContact.update({
+    where: { id: contactId },
+    data: {
+      finalDispositionId: disposition.id,
+      status,
+      temperature,
+      transferredToSales: false,
+      lockedByUserId: null,
+      lockedAt: null,
+      lockExpiresAt: null,
+    },
+    include: {
+      assignedAgent: { select: { id: true, name: true } },
+      finalDisposition: { select: { id: true, label: true } },
+      appointment: { select: { id: true, scheduledAt: true, seller: { select: { name: true } } } },
+    },
+  });
+
+  await recordAudit(prisma, {
+    userId: user.id,
+    entityType: "CampaignContact",
+    entityId: contactId,
+    action: "CONTACT_DISPOSITION_CORRECTED",
+    metadata: { campaignId, dispositionId: disposition.id, previousDispositionId: contact.finalDispositionId },
+  });
+
+  return updated;
 }

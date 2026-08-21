@@ -63,14 +63,29 @@ export default async function CampaignContactsPage({
     countActionableContacts(id),
   ]);
 
-  const workbenchGroup =
-    metric === "pending" ? "untreated" : metric || group === "all" ? "treated" : group;
+  const workbenchGroup: ContactListGroup = !metric
+    ? group
+    : metric === "pending" || metric === "followUp"
+      ? "untreated"
+      : "treated";
 
   const activeAgents = campaignAgents.filter((a) => a.active).map((a) => ({ id: a.user.id, name: a.user.name }));
 
   function buildTabHref(nextGroup: string) {
     const params = new URLSearchParams();
-    if (sp.q) params.set("q", sp.q);
+    for (const key of [
+      "q",
+      "agentId",
+      "status",
+      "disposition",
+      "temperature",
+      "interested",
+      "hasAppointment",
+      "transferredToSales",
+    ] as const) {
+      const value = sp[key];
+      if (value) params.set(key, value);
+    }
     params.set("group", nextGroup);
     return `?${params.toString()}`;
   }
@@ -124,6 +139,7 @@ export default async function CampaignContactsPage({
         group={workbenchGroup}
         contacts={contacts}
         eligibleAgents={activeAgents}
+        dispositions={dispositions.map((d) => ({ id: d.id, label: d.label, category: d.category }))}
       />
 
       {totalPages > 1 && (
