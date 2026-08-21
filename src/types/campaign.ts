@@ -23,6 +23,7 @@ export type QueueContact = {
   purchaseTimeline: PurchaseTimeline | null;
   transferredToSales: boolean;
   sellersGroupNotifiedAt: string | null;
+  finalDisposition: { category: DispositionCategory } | null;
   appointment: {
     scheduledAt: string;
     notes: string | null;

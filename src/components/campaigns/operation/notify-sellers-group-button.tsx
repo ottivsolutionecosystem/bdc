@@ -71,8 +71,8 @@ export function NotifySellersGroupButton({
         <DialogHeader>
           <DialogTitle>Avisar o grupo de vendedores</DialogTitle>
           <DialogDescription>
-            Dispara o fluxo no n8n para mandar o cliente no grupo. O WhatsApp da mensagem usa o horário de
-            Cuiabá.
+            O aviso já sai ao salvar um parecer Positivo ou Conversão. Use este botão só se precisar
+            mandar de novo. O WhatsApp da mensagem usa o horário de Cuiabá.
             {notifiedLabel ? ` Último aviso: ${notifiedLabel}.` : ""}
           </DialogDescription>
         </DialogHeader>

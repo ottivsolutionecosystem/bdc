@@ -1,21 +1,30 @@
-import type { ContactTemperature } from "@/generated/prisma/enums";
+import type { ContactTemperature, DispositionCategory } from "@/generated/prisma/enums";
 
-export function isEligibleForSellersGroupNotify(contact: {
-  temperature: ContactTemperature;
-  appointment?: unknown | null;
-}): boolean {
-  if (contact.appointment) return true;
-  return contact.temperature === "HOT" || contact.temperature === "WARM";
+export function isSellersNotifyDispositionCategory(
+  category: DispositionCategory | string | null | undefined
+): boolean {
+  return category === "POSITIVE" || category === "CONVERSION";
 }
 
-export function shouldStayOnQueueContact(contact: {
-  transferredToSales: boolean;
-  temperature: ContactTemperature;
-  status: string;
-  appointment?: unknown | null;
+export function isEligibleForSellersGroupNotify(contact: {
+  finalDisposition?: { category: DispositionCategory | string } | null;
 }): boolean {
+  return isSellersNotifyDispositionCategory(contact.finalDisposition?.category);
+}
+
+export function shouldStayOnQueueContact(
+  contact: {
+    transferredToSales: boolean;
+    temperature: ContactTemperature;
+    status: string;
+    sellersGroupNotifiedAt?: string | Date | null;
+    finalDisposition?: { category: DispositionCategory | string } | null;
+  },
+  sellersNotifyEnabled = false
+): boolean {
   if (contact.transferredToSales) return false;
-  return (
-    isEligibleForSellersGroupNotify(contact) || contact.status === "CONVERTED"
-  );
+  const canTransfer = contact.temperature === "HOT" || contact.status === "CONVERTED";
+  const waitingNotify =
+    sellersNotifyEnabled && isEligibleForSellersGroupNotify(contact) && !contact.sellersGroupNotifiedAt;
+  return canTransfer || waitingNotify;
 }

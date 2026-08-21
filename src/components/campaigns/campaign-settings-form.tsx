@@ -197,8 +197,8 @@ export function CampaignSettingsForm({
             onChange={(event) => setNextWebhookUrl(event.target.value)}
           />
           <p className="text-xs text-muted-foreground">
-            Quando a agente agendar visita ou registrar interesse, ela pode avisar o grupo. O n8n recebe os
-            dados do cliente no campo <span className="font-medium">text</span> para mandar no WhatsApp.
+            Dispara sozinho quando a agente salva um parecer Positivo ou Conversão. O n8n recebe os dados
+            do cliente no campo <span className="font-medium">text</span> para mandar no WhatsApp.
           </p>
         </div>
         <Button onClick={handleSave} disabled={submitting}>

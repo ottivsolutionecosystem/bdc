@@ -6,6 +6,8 @@ import { requireSupervisorOrAdmin, type SessionUser } from "@/lib/permissions";
 import { startOfTodayInAppTz, startOfTomorrowInAppTz } from "@/lib/datetime";
 import { recordAudit } from "@/server/services/audit";
 import { assertCampaignOperable } from "@/lib/campaign-lifecycle";
+import { isSellersNotifyDispositionCategory } from "@/lib/sellers-notify";
+import { campaignHasSellersNotifyWebhook, notifySellersGroup } from "@/server/services/sellers-notify";
 import type { SubmitAttemptInput } from "@/schemas/attempt";
 
 const LOCK_DURATION_MS = 10 * 60 * 1000; // 10 minutos: tempo de sobra para ligar e preencher o parecer
@@ -13,6 +15,7 @@ const MAX_ATTEMPTS = 3;
 const queueContactInclude = {
   supervisorQueuedBy: { select: { name: true } },
   appointment: { select: { scheduledAt: true, notes: true, seller: { select: { name: true } } } },
+  finalDisposition: { select: { category: true } },
 } as const;
 
 const ACTIVE_STATUSES: ContactStatus[] = ["UNTREATED", "ATTEMPTING", "FOLLOW_UP"];
@@ -140,7 +143,7 @@ export async function submitAttempt(
     ? contact.temperature
     : disposition.defaultTemperature;
 
-  return prisma.$transaction(async (tx) => {
+  const saved = await prisma.$transaction(async (tx) => {
     await tx.campaignContact.update({
       where: { id: contactId },
       data: {
@@ -226,6 +229,31 @@ export async function submitAttempt(
       include: queueContactInclude,
     });
   });
+
+  let contactAfterNotify = saved;
+  let sellersNotify: { status: "skipped" | "sent" | "failed"; error?: string } = { status: "skipped" };
+
+  if (isSellersNotifyDispositionCategory(disposition.category)) {
+    const campaign = await prisma.campaign.findUnique({
+      where: { id: campaignId },
+      select: { sellersNotifyWebhookUrl: true },
+    });
+    if (campaignHasSellersNotifyWebhook(campaign?.sellersNotifyWebhookUrl)) {
+      try {
+        contactAfterNotify = await notifySellersGroup(user, campaignId, contactId, {
+          note: input.notes?.trim() || undefined,
+        });
+        sellersNotify = { status: "sent" };
+      } catch (error) {
+        sellersNotify = {
+          status: "failed",
+          error: error instanceof ApiError ? error.message : "Não foi possível avisar o grupo de vendedores.",
+        };
+      }
+    }
+  }
+
+  return { contact: contactAfterNotify, sellersNotify };
 }
 
 export async function getAgentQueueStats(userId: string, campaignId: string) {

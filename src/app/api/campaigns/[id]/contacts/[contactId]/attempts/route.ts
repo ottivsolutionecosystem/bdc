@@ -44,8 +44,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     await assertCampaignAccess(user, id);
     const body = await request.json();
     const input = submitAttemptSchema.parse(body);
-    const contact = await submitAttempt(user, id, contactId, input);
-    return NextResponse.json({ contact });
+    const { contact, sellersNotify } = await submitAttempt(user, id, contactId, input);
+    return NextResponse.json({ contact, sellersNotify });
   } catch (error) {
     return handleApiError(error);
   }

@@ -70,9 +70,16 @@ export function OperationPanel({
       return;
     }
 
-    toast.success("Parecer registrado com sucesso.");
     const saved = data?.contact as QueueContact | undefined;
-    if (saved && shouldStayOnQueueContact(saved)) {
+    if (data?.sellersNotify?.status === "sent") {
+      toast.success("Parecer registrado e grupo de vendedores avisado.");
+    } else if (data?.sellersNotify?.status === "failed") {
+      toast.success("Parecer registrado com sucesso.");
+      toast.error(data.sellersNotify.error ?? "Não foi possível avisar o grupo de vendedores.");
+    } else {
+      toast.success("Parecer registrado com sucesso.");
+    }
+    if (saved && shouldStayOnQueueContact(saved, sellersNotifyEnabled)) {
       setContact(saved);
       await fetchStats();
       return;

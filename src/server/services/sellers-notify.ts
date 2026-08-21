@@ -76,6 +76,7 @@ export async function notifySellersGroup(
       campaign: { select: { id: true, name: true, sellersNotifyWebhookUrl: true } },
       appointment: { select: { scheduledAt: true, notes: true, seller: { select: { name: true } } } },
       assignedAgent: { select: { id: true, name: true } },
+      finalDisposition: { select: { category: true } },
     },
   });
 
@@ -91,7 +92,7 @@ export async function notifySellersGroup(
   if (!isEligibleForSellersGroupNotify(contact)) {
     throw new ApiError(
       422,
-      "Só é possível avisar o grupo depois de agendar a visita ou registrar interesse (quente ou morno)."
+      "Só é possível avisar o grupo depois de um parecer positivo ou de conversão."
     );
   }
 
@@ -180,6 +181,7 @@ export async function notifySellersGroup(
     include: {
       supervisorQueuedBy: { select: { name: true } },
       appointment: { select: { scheduledAt: true, notes: true, seller: { select: { name: true } } } },
+      finalDisposition: { select: { category: true } },
     },
   });
 
