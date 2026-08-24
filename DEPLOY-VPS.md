@@ -132,6 +132,9 @@ AUTH_DEV_RESET_LINKS=false
 
 # Opcional. Se vazio, cole a URL depois em Configurações da campanha.
 SELLERS_GROUP_WEBHOOK_URL=
+
+# Opcional. Token Wavoip padrão. Cada agente também pode ter o próprio em Usuários.
+WAVOIP_DEVICE_TOKEN=
 ```
 
 Gere o `AUTH_SECRET`:

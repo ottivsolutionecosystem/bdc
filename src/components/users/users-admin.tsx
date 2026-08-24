@@ -44,6 +44,7 @@ export type UserRow = {
   email: string;
   role: UserRole;
   active: boolean;
+  wavoipDeviceToken: string | null;
 };
 
 const emptyForm = {
@@ -52,6 +53,7 @@ const emptyForm = {
   password: "",
   role: "AGENT" as UserRole,
   active: true,
+  wavoipDeviceToken: "",
 };
 
 export function UsersAdmin({ users, currentUserId }: { users: UserRow[]; currentUserId: string }) {
@@ -69,7 +71,14 @@ export function UsersAdmin({ users, currentUserId }: { users: UserRow[]; current
 
   function openEdit(user: UserRow) {
     setEditing(user);
-    setForm({ name: user.name, email: user.email, password: "", role: user.role, active: user.active });
+    setForm({
+      name: user.name,
+      email: user.email,
+      password: "",
+      role: user.role,
+      active: user.active,
+      wavoipDeviceToken: user.wavoipDeviceToken ?? "",
+    });
     setOpen(true);
   }
 
@@ -157,6 +166,23 @@ export function UsersAdmin({ users, currentUserId }: { users: UserRow[]; current
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="user-wavoip">Token Wavoip (ligação na Operação)</Label>
+                <Input
+                  id="user-wavoip"
+                  value={form.wavoipDeviceToken}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, wavoipDeviceToken: event.target.value }))
+                  }
+                  placeholder="Cole o token do dispositivo"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Com o token, o botão Ligar da agente discá pelo WhatsApp (Wavoip). Sem token, usa o
+                  telefone do aparelho.
+                </p>
+              </div>
+              <div className="space-y-2">
                 <Label>Papel</Label>
                 <Select
                   value={form.role}
@@ -190,6 +216,7 @@ export function UsersAdmin({ users, currentUserId }: { users: UserRow[]; current
             <TableHead>Nome</TableHead>
             <TableHead>E-mail</TableHead>
             <TableHead>Papel</TableHead>
+            <TableHead>Wavoip</TableHead>
             <TableHead>Acesso</TableHead>
             <TableHead className="text-right">Editar</TableHead>
           </TableRow>
@@ -201,6 +228,11 @@ export function UsersAdmin({ users, currentUserId }: { users: UserRow[]; current
               <TableCell>{user.email}</TableCell>
               <TableCell>
                 <Badge variant="secondary">{ROLE_LABELS[user.role]}</Badge>
+              </TableCell>
+              <TableCell>
+                <span className="text-xs text-muted-foreground">
+                  {user.wavoipDeviceToken ? "Configurado" : "—"}
+                </span>
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">

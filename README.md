@@ -48,7 +48,7 @@ Senha de todos: `demo1234`
 
 O seed **não** cria campanha nem base. Crie a campanha, vincule as agentes, importe a planilha e ative para a fila funcionar.
 
-Na operação, a agente liga pelo telefone do aparelho (`tel:`) ou abre o WhatsApp. O CRM registra o parecer; ele não discá sozinho.
+Na operação, a agente clica em **Ligar** e a chamada vai pelo Wavoip (WhatsApp). Sem token, o botão usa o telefone do aparelho (`tel:`). O botão **WhatsApp** abre a conversa. O CRM registra o parecer; ele não discá sozinho.
 
 ## Scripts
 

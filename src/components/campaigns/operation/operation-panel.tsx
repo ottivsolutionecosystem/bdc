@@ -21,12 +21,14 @@ export function OperationPanel({
   dispositions,
   sellers,
   sellersNotifyEnabled,
+  wavoipDeviceToken,
 }: {
   campaignId: string;
   initialStats: QueueStats;
   dispositions: DispositionOption[];
   sellers: Seller[];
   sellersNotifyEnabled: boolean;
+  wavoipDeviceToken?: string | null;
 }) {
   const [stats, setStats] = useState<QueueStats>(initialStats);
   const [contact, setContact] = useState<QueueContact | null | undefined>(undefined);
@@ -102,7 +104,7 @@ export function OperationPanel({
 
       {contact && (
         <div className="space-y-6">
-          <NextContactCard contact={contact} />
+          <NextContactCard contact={contact} wavoipDeviceToken={wavoipDeviceToken} />
           {sellersNotifyEnabled && isEligibleForSellersGroupNotify(contact) && (
             <NotifySellersGroupButton
               campaignId={campaignId}

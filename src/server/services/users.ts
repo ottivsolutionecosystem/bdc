@@ -12,9 +12,20 @@ const publicUserSelect = {
   email: true,
   role: true,
   active: true,
+  wavoipDeviceToken: true,
   createdAt: true,
   updatedAt: true,
 } as const;
+
+export async function getAgentWavoipToken(userId: string): Promise<string | null> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { wavoipDeviceToken: true },
+  });
+  const fromUser = user?.wavoipDeviceToken?.trim();
+  if (fromUser) return fromUser;
+  return process.env.WAVOIP_DEVICE_TOKEN?.trim() || null;
+}
 
 export async function listUsers(actor: SessionUser) {
   requireAdmin(actor);
@@ -40,6 +51,7 @@ export async function createUser(actor: SessionUser, input: CreateUserInput) {
       passwordHash,
       role: input.role,
       active: input.active ?? true,
+      wavoipDeviceToken: input.wavoipDeviceToken || null,
     },
     select: publicUserSelect,
   });
@@ -84,6 +96,9 @@ export async function updateUser(actor: SessionUser, userId: string, input: Upda
       role: input.role,
       active: input.active,
       passwordHash,
+      ...(input.wavoipDeviceToken !== undefined
+        ? { wavoipDeviceToken: input.wavoipDeviceToken || null }
+        : {}),
     },
     select: publicUserSelect,
   });
