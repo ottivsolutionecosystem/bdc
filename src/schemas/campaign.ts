@@ -53,6 +53,7 @@ export const updateCampaignSchema = z.object({
       z.null(),
     ])
     .optional(),
+  wavoipDeviceToken: z.string().trim().max(500).optional().nullable(),
 });
 
 export type UpdateCampaignInput = z.infer<typeof updateCampaignSchema>;

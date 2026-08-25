@@ -178,8 +178,8 @@ export function UsersAdmin({ users, currentUserId }: { users: UserRow[]; current
                   spellCheck={false}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Com o token, o botão Ligar da agente discá pelo WhatsApp (Wavoip). Sem token, usa o
-                  telefone do aparelho.
+                  Com o token, o botão Ligar da Operação abre a chamada nesta tela. Sem token próprio,
+                  usa o token da campanha, se houver.
                 </p>
               </div>
               <div className="space-y-2">

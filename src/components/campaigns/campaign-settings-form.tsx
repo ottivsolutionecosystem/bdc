@@ -47,6 +47,7 @@ export function CampaignSettingsForm({
   endDate,
   agentCount,
   sellersNotifyWebhookUrl,
+  wavoipDeviceToken,
 }: {
   campaignId: string;
   name: string;
@@ -57,6 +58,7 @@ export function CampaignSettingsForm({
   endDate: Date | string | null;
   agentCount: number;
   sellersNotifyWebhookUrl: string | null;
+  wavoipDeviceToken: string | null;
 }) {
   const router = useRouter();
   const [nextName, setNextName] = useState(name);
@@ -67,6 +69,7 @@ export function CampaignSettingsForm({
   const [nextStart, setNextStart] = useState(toDateInput(startDate));
   const [nextEnd, setNextEnd] = useState(toDateInput(endDate));
   const [nextWebhookUrl, setNextWebhookUrl] = useState(sellersNotifyWebhookUrl ?? "");
+  const [nextWavoipToken, setNextWavoipToken] = useState(wavoipDeviceToken ?? "");
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSave() {
@@ -91,6 +94,7 @@ export function CampaignSettingsForm({
           startDate: fromDateInput(nextStart),
           endDate: fromDateInput(nextEnd),
           sellersNotifyWebhookUrl: nextWebhookUrl.trim(),
+          wavoipDeviceToken: nextWavoipToken.trim(),
         }),
       });
       if (!response.ok) {
@@ -199,6 +203,22 @@ export function CampaignSettingsForm({
           <p className="text-xs text-muted-foreground">
             Dispara sozinho quando a agente salva um parecer Positivo ou Conversão. O n8n recebe os dados
             do cliente no campo <span className="font-medium">text</span> para mandar no WhatsApp.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="campaign-wavoip">Token Wavoip (botão Ligar da Operação)</Label>
+          <Input
+            id="campaign-wavoip"
+            value={nextWavoipToken}
+            onChange={(event) => setNextWavoipToken(event.target.value)}
+            placeholder="Cole o token do dispositivo"
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <p className="text-xs text-muted-foreground">
+            Com este token, o botão Ligar abre a chamada nesta tela (mudo, viva-voz, desligar e
+            modo ouvido). A agente pode ter um token próprio em Usuários; se tiver, ele vale na
+            frente deste.
           </p>
         </div>
         <Button onClick={handleSave} disabled={submitting}>

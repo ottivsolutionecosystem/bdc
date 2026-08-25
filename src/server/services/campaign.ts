@@ -70,7 +70,7 @@ export async function updateCampaign(user: SessionUser, campaignId: string, inpu
   }
 
   return prisma.$transaction(async (tx) => {
-    const { sellersNotifyWebhookUrl, ...auditable } = input;
+    const { sellersNotifyWebhookUrl, wavoipDeviceToken, ...auditable } = input;
     const updated = await tx.campaign.update({
       where: { id: campaignId },
       data: {
@@ -82,6 +82,7 @@ export async function updateCampaign(user: SessionUser, campaignId: string, inpu
         endDate: input.endDate === undefined ? undefined : input.endDate ? new Date(input.endDate) : null,
         sellersNotifyWebhookUrl:
           sellersNotifyWebhookUrl === undefined ? undefined : sellersNotifyWebhookUrl || null,
+        wavoipDeviceToken: wavoipDeviceToken === undefined ? undefined : wavoipDeviceToken || null,
       },
     });
     await recordAudit(tx, {
@@ -93,6 +94,7 @@ export async function updateCampaign(user: SessionUser, campaignId: string, inpu
         ...auditable,
         sellersNotifyWebhookConfigured:
           sellersNotifyWebhookUrl === undefined ? undefined : Boolean(sellersNotifyWebhookUrl),
+        wavoipConfigured: wavoipDeviceToken === undefined ? undefined : Boolean(wavoipDeviceToken),
       },
     });
     return updated;

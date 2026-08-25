@@ -6,9 +6,16 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.dirname(fileURLToPath(import.meta.url)),
   },
+  transpilePackages: ["@wavoip/wavoip-api"],
   devIndicators: false,
   async headers() {
     return [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "Permissions-Policy", value: "microphone=(self), camera=()" },
+        ],
+      },
       {
         source: "/sw.js",
         headers: [

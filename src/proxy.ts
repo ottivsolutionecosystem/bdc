@@ -21,7 +21,9 @@ export default auth((req) => {
   if (isPublic) return NextResponse.next();
 
   if (!req.auth?.user || !req.auth.user.active) {
-    const loginUrl = new URL("/login", req.nextUrl.origin);
+    const loginUrl = req.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    loginUrl.search = "";
     return NextResponse.redirect(loginUrl);
   }
 

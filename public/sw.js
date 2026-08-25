@@ -1,24 +1,25 @@
-const CACHE = "auttus-static-v4";
+const CACHE = "auttus-static-v5";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) =>
-      cache.addAll([
-        "/icons/icon-192.png",
-        "/icons/icon-512.png",
-        "/icons/icon-maskable-512.png",
-        "/icons/apple-touch-icon.png",
-      ])
-    )
+    caches
+      .open(CACHE)
+      .then((cache) =>
+        cache.addAll([
+          "/icons/icon-192.png",
+          "/icons/icon-512.png",
+          "/icons/icon-maskable-512.png",
+          "/icons/apple-touch-icon.png",
+        ]),
+      )
+      .catch(() => undefined),
   );
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)))
-    )
+    caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)))),
   );
   self.clients.claim();
 });
@@ -38,8 +39,8 @@ self.addEventListener("fetch", (event) => {
           new Response("Sem conexão. Abra o Auttus de novo quando a internet voltar.", {
             status: 503,
             headers: { "Content-Type": "text/plain; charset=utf-8" },
-          })
-      )
+          }),
+      ),
     );
     return;
   }
@@ -61,6 +62,6 @@ self.addEventListener("fetch", (event) => {
         void caches.open(CACHE).then((cache) => cache.put(request, copy));
         return response;
       });
-    })
+    }),
   );
 });

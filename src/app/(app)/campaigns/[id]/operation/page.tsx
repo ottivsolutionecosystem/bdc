@@ -42,7 +42,7 @@ export default async function CampaignOperationPage({ params }: { params: Promis
     getAgentQueueStats(user.id, id),
     listActiveDispositions(id),
     listSellers(),
-    getAgentWavoipToken(user.id),
+    getAgentWavoipToken(user.id, id),
   ]);
 
   const dispositionOptions: DispositionOption[] = dispositions.map((d) => ({

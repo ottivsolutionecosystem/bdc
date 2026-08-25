@@ -1,13 +1,12 @@
 "use client";
 
-import type { MouseEvent } from "react";
 import { Phone, Car, History, Calendar, Megaphone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TemperatureBadge } from "@/components/campaigns/status-badge";
 import { toWhatsAppUrl } from "@/lib/phone";
-import { buildWavoipCallUrl, openWavoipCall } from "@/lib/wavoip";
+import { toWavoipPhone } from "@/lib/wavoip";
 import { supervisorQueueKindLabel } from "@/lib/contact-action";
 import type { QueueContact } from "@/types/campaign";
 
@@ -27,25 +26,19 @@ function formatPurchaseDate(value: string | null) {
 export function NextContactCard({
   contact,
   wavoipDeviceToken,
+  calling,
+  onCall,
 }: {
   contact: QueueContact;
   wavoipDeviceToken?: string | null;
+  calling?: boolean;
+  onCall?: (phone: string) => void;
 }) {
   const phoneDigits = contact.phone.replace(/\D/g, "");
   const whatsappUrl = toWhatsAppUrl(contact.phone);
-  const wavoipUrl = wavoipDeviceToken
-    ? buildWavoipCallUrl(wavoipDeviceToken, contact.phone, contact.name)
-    : null;
-  const telHref = !wavoipDeviceToken && phoneDigits ? `tel:${phoneDigits}` : null;
-  const callHref = wavoipUrl ?? telHref;
-  const wavoipUnavailable = Boolean(wavoipDeviceToken) && !wavoipUrl;
-
-  function handleCallClick(event: MouseEvent<HTMLAnchorElement>) {
-    if (!wavoipUrl) return;
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
-    event.preventDefault();
-    openWavoipCall(wavoipUrl);
-  }
+  const wavoipPhone = wavoipDeviceToken ? toWavoipPhone(contact.phone) : null;
+  const canCall = Boolean(wavoipDeviceToken && wavoipPhone && onCall);
+  const telHref = phoneDigits ? `tel:${phoneDigits}` : null;
 
   return (
     <Card className="overflow-hidden">
@@ -102,26 +95,21 @@ export function NextContactCard({
         </p>
 
         <div className="grid gap-2 sm:grid-cols-2">
-          {callHref ? (
-            <Button asChild size="lg">
-              <a
-                href={callHref}
-                target={wavoipUrl ? "wavoip" : undefined}
-                rel={wavoipUrl ? "noreferrer" : undefined}
-                onClick={handleCallClick}
-                aria-label={wavoipUrl ? "Ligar pelo Wavoip" : "Ligar"}
-                title={wavoipUrl ? "Liga pelo WhatsApp (Wavoip)" : undefined}
-              >
-                <Phone />
-                Ligar
-              </a>
+          {canCall ? (
+            <Button
+              size="lg"
+              disabled={calling}
+              onClick={() => onCall?.(wavoipPhone!)}
+            >
+              <Phone />
+              {calling ? "Ligando..." : "Ligar"}
             </Button>
-          ) : wavoipUnavailable ? (
-            <Button size="lg" disabled title="Telefone inválido para ligar pelo Wavoip">
+          ) : (
+            <Button size="lg" disabled>
               <Phone />
               Ligar
             </Button>
-          ) : null}
+          )}
           {whatsappUrl ? (
             <Button asChild size="lg" variant="outline">
               <a href={whatsappUrl} target="_blank" rel="noreferrer">
@@ -130,6 +118,24 @@ export function NextContactCard({
             </Button>
           ) : null}
         </div>
+        {canCall ? (
+          <p className="text-xs text-muted-foreground">
+            A chamada abre nesta tela, com mudo, viva-voz e desligar.
+            {telHref ? (
+              <>
+                {" "}
+                <a href={telHref} className="underline-offset-2 hover:underline">
+                  Ligar no aparelho
+                </a>
+              </>
+            ) : null}
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Para ligar pelo Wavoip, cole o token do dispositivo em Configurações da campanha (ou no
+            cadastro da agente) e recarregue esta tela.
+          </p>
+        )}
       </CardContent>
     </Card>
   );

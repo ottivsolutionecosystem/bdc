@@ -35,6 +35,7 @@ export default async function CampaignSettingsPage({ params }: { params: Promise
         endDate={campaign.endDate}
         agentCount={agents.filter((agent) => agent.active).length}
         sellersNotifyWebhookUrl={campaign.sellersNotifyWebhookUrl}
+        wavoipDeviceToken={campaign.wavoipDeviceToken}
       />
       <div className="flex justify-end">
         <RedistributeAllButton campaignId={id} />

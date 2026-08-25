@@ -15,7 +15,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     await assertCampaignAccess(user, id);
     const campaign = await getCampaignOrThrow(id);
     if (!isSupervisorOrAdmin(user)) {
-      const { sellersNotifyWebhookUrl: _webhook, ...safe } = campaign;
+      const { sellersNotifyWebhookUrl: _webhook, wavoipDeviceToken: _wavoip, ...safe } = campaign;
       return NextResponse.json({ campaign: safe });
     }
     return NextResponse.json({ campaign });

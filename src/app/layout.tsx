@@ -56,9 +56,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="pt-BR"
       className={`${inter.variable} ${inter.className} ${geistMono.variable} h-full antialiased`}
     >
-      <head>
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-      </head>
       <body className="flex min-h-full flex-col" suppressHydrationWarning>
         {children}
         <AppToaster />

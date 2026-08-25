@@ -17,14 +17,24 @@ const publicUserSelect = {
   updatedAt: true,
 } as const;
 
-export async function getAgentWavoipToken(userId: string): Promise<string | null> {
+export async function getAgentWavoipToken(userId: string, campaignId?: string): Promise<string | null> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { wavoipDeviceToken: true },
   });
   const fromUser = user?.wavoipDeviceToken?.trim();
   if (fromUser) return fromUser;
-  return process.env.WAVOIP_DEVICE_TOKEN?.trim() || null;
+
+  if (campaignId) {
+    const campaign = await prisma.campaign.findUnique({
+      where: { id: campaignId },
+      select: { wavoipDeviceToken: true },
+    });
+    const fromCampaign = campaign?.wavoipDeviceToken?.trim();
+    if (fromCampaign) return fromCampaign;
+  }
+
+  return process.env["WAVOIP_DEVICE_TOKEN"]?.trim() || null;
 }
 
 export async function listUsers(actor: SessionUser) {
