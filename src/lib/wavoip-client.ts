@@ -1,6 +1,8 @@
 "use client";
 
-import type { CallActive, CallOutgoing, Wavoip } from "@wavoip/wavoip-api";
+import type { CallActive, CallOutgoing, Offer, Unsubscribe, Wavoip } from "@wavoip/wavoip-api";
+
+export type { Offer as WavoipOffer };
 
 export type WavoipCallStatus = "calling" | "active";
 
@@ -10,6 +12,30 @@ let client: Wavoip | null = null;
 let clientToken: string | null = null;
 let liveCall: LiveCall | null = null;
 let endedCallback: (() => void) | null = null;
+let offerUnsub: Unsubscribe | null = null;
+/** Reserva o token enquanto um toque é avaliado ou o aviso está na tela. */
+let incomingHeld = false;
+let listenGeneration = 0;
+
+export function isWavoipBusy() {
+  return liveCall !== null || incomingHeld;
+}
+
+export function releaseWavoipIncoming() {
+  incomingHeld = false;
+}
+
+export function watchWavoipOffer(offer: Offer, onGone: () => void): Unsubscribe {
+  const unsubs = [
+    offer.on("unanswered", onGone),
+    offer.on("ended", onGone),
+    offer.on("acceptedElsewhere", onGone),
+    offer.on("rejectedElsewhere", onGone),
+  ];
+  return () => {
+    unsubs.forEach((unsub) => unsub());
+  };
+}
 
 export async function unlockWavoipMicrophone() {
   try {
@@ -57,14 +83,58 @@ function handleEnded() {
   cb?.();
 }
 
+export async function listenWavoipIncoming(token: string, onOffer: (offer: Offer) => void) {
+  const generation = ++listenGeneration;
+  const wavoip = await loadClient(token);
+  if (generation !== listenGeneration) return;
+  try {
+    await Promise.all(wavoip.wakeUpDevices([token]));
+  } catch {
+    // Dispositivo já acordado.
+  }
+  if (generation !== listenGeneration) return;
+  offerUnsub?.();
+  offerUnsub = wavoip.on("offer", (offer) => {
+    if (liveCall || incomingHeld) return;
+    incomingHeld = true;
+    onOffer(offer);
+  });
+}
+
+export function stopListeningWavoipIncoming() {
+  listenGeneration += 1;
+  offerUnsub?.();
+  offerUnsub = null;
+}
+
+export async function acceptWavoipOffer(offer: Offer, onEnded: () => void) {
+  if (liveCall) {
+    throw new Error("Já existe uma ligação em curso.");
+  }
+  await unlockWavoipMicrophone();
+  const { call, err } = await offer.accept();
+  if (err || !call) {
+    throw new Error(err ?? "Não foi possível atender.");
+  }
+  liveCall = call;
+  incomingHeld = false;
+  endedCallback = onEnded;
+  call.on("ended", handleEnded);
+  call.on("error", handleEnded);
+}
+
+export async function rejectWavoipOffer(offer: Offer) {
+  await offer.reject();
+}
+
 export async function startWavoipCall(params: {
   token: string;
   phone: string;
   onActive: () => void;
   onEnded: () => void;
 }): Promise<void> {
-  if (liveCall) {
-    await hangupWavoipCall();
+  if (liveCall || incomingHeld) {
+    throw new Error("Já existe uma ligação em curso.");
   }
 
   await unlockWavoipMicrophone();
