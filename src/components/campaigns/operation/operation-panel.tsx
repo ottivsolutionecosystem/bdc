@@ -21,6 +21,7 @@ import {
   unlockWavoipMicrophone,
   type WavoipCallStatus,
 } from "@/lib/wavoip-client";
+import { startCallRingback, stopCallRingback } from "@/lib/call-ringback";
 import type { SubmitAttemptInput } from "@/schemas/attempt";
 import type { DispositionOption, QueueContact, Seller } from "@/types/campaign";
 
@@ -73,6 +74,7 @@ export function OperationPanel({
 
   useEffect(() => {
     return () => {
+      stopCallRingback();
       void hangupWavoipCall();
     };
   }, []);
@@ -115,18 +117,24 @@ export function OperationPanel({
     setSpeakerOn(false);
     try {
       await unlockWavoipMicrophone();
+      await startCallRingback();
       setCallStatus("calling");
       await startWavoipCall({
         token: wavoipDeviceToken,
         phone,
-        onActive: () => setCallStatus("active"),
+        onActive: () => {
+          stopCallRingback();
+          setCallStatus("active");
+        },
         onEnded: () => {
+          stopCallRingback();
           setCallStatus(null);
           setMuted(false);
           setSpeakerOn(false);
         },
       });
     } catch (error) {
+      stopCallRingback();
       setCallStatus(null);
       toast.error(error instanceof Error ? error.message : "Não foi possível ligar pelo Wavoip.");
     } finally {
@@ -135,6 +143,7 @@ export function OperationPanel({
   }
 
   async function handleHangup() {
+    stopCallRingback();
     await hangupWavoipCall();
     setCallStatus(null);
     setMuted(false);

@@ -1,6 +1,6 @@
 "use client";
 
-import { Phone, Car, History, Calendar, Megaphone } from "lucide-react";
+import { Phone, PhoneCall, Car, History, Calendar, Megaphone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,9 +36,9 @@ export function NextContactCard({
 }) {
   const phoneDigits = contact.phone.replace(/\D/g, "");
   const whatsappUrl = toWhatsAppUrl(contact.phone);
-  const wavoipPhone = wavoipDeviceToken ? toWavoipPhone(contact.phone) : null;
-  const canCall = Boolean(wavoipDeviceToken && wavoipPhone && onCall);
-  const telHref = phoneDigits ? `tel:${phoneDigits}` : null;
+  const wavoipPhone = toWavoipPhone(contact.phone);
+  const canVoip = Boolean(wavoipDeviceToken && wavoipPhone && onCall);
+  const telHref = wavoipPhone ? `tel:+${wavoipPhone}` : phoneDigits ? `tel:${phoneDigits}` : null;
 
   return (
     <Card className="overflow-hidden">
@@ -95,47 +95,45 @@ export function NextContactCard({
         </p>
 
         <div className="grid gap-2 sm:grid-cols-2">
-          {canCall ? (
-            <Button
-              size="lg"
-              disabled={calling}
-              onClick={() => onCall?.(wavoipPhone!)}
-            >
-              <Phone />
-              {calling ? "Ligando..." : "Ligar"}
+          {canVoip ? (
+            <Button size="lg" disabled={calling} onClick={() => onCall?.(wavoipPhone!)}>
+              <PhoneCall />
+              {calling ? "Ligando..." : "Ligar WhatsApp"}
             </Button>
           ) : (
             <Button size="lg" disabled>
+              <PhoneCall />
+              Ligar WhatsApp
+            </Button>
+          )}
+          {telHref && !calling ? (
+            <Button asChild size="lg" variant="secondary">
+              <a href={telHref}>
+                <Phone />
+                Ligar celular
+              </a>
+            </Button>
+          ) : (
+            <Button size="lg" variant="secondary" disabled>
               <Phone />
-              Ligar
+              Ligar celular
             </Button>
           )}
           {whatsappUrl ? (
-            <Button asChild size="lg" variant="outline">
+            <Button asChild size="lg" variant="outline" className="sm:col-span-2">
               <a href={whatsappUrl} target="_blank" rel="noreferrer">
-                WhatsApp
+                Conversar
               </a>
             </Button>
           ) : null}
         </div>
-        {canCall ? (
-          <p className="text-xs text-muted-foreground">
-            A chamada abre nesta tela, com mudo, viva-voz e desligar.
-            {telHref ? (
-              <>
-                {" "}
-                <a href={telHref} className="underline-offset-2 hover:underline">
-                  Ligar no aparelho
-                </a>
-              </>
-            ) : null}
-          </p>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            Para ligar pelo Wavoip, cole o token do dispositivo em Configurações da campanha (ou no
-            cadastro da agente) e recarregue esta tela.
-          </p>
-        )}
+        <p className="text-xs text-muted-foreground">
+          <strong>Ligar WhatsApp</strong> é o VoIP nesta tela. <strong>Ligar celular</strong> abre o
+          discador do aparelho. <strong>Conversar</strong> abre o WhatsApp.
+          {!canVoip
+            ? " Para o VoIP, cole o token Wavoip em Configurações da campanha (ou no cadastro da agente) e recarregue."
+            : null}
+        </p>
       </CardContent>
     </Card>
   );

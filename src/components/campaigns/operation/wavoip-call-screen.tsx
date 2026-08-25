@@ -123,9 +123,20 @@ export function WavoipCallScreen({
   ) : (
     <div className="fixed inset-0 z-[200] flex select-none flex-col bg-[#0b1524] px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(3rem,env(safe-area-inset-top))] text-white">
       <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-        <p className="text-sm tracking-wide text-white/60 uppercase">
+        <p
+          className={cn(
+            "text-sm tracking-wide text-white/60 uppercase",
+            status === "calling" && "animate-pulse",
+          )}
+        >
           {status === "calling" ? "Chamando..." : "Em ligação"}
         </p>
+        {status === "calling" ? (
+          <div className="relative my-3 flex size-16 items-center justify-center" aria-hidden>
+            <span className="absolute inset-0 rounded-full bg-white/25 animate-ping" />
+            <span className="relative size-10 rounded-full bg-white/20" />
+          </div>
+        ) : null}
         <h1 className="max-w-full truncate text-3xl font-semibold sm:text-4xl">{name}</h1>
         <p className="text-lg text-white/70">{phone}</p>
         <p className="mt-2 font-mono text-xl tabular-nums text-white/90">
