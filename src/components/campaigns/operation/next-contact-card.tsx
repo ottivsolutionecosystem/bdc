@@ -1,6 +1,8 @@
 "use client";
 
-import { Phone, PhoneCall, Car, History, Calendar, Megaphone } from "lucide-react";
+import { useState } from "react";
+import { Phone, PhoneCall, Car, History, Calendar, Megaphone, MessageSquare } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,20 +27,54 @@ function formatPurchaseDate(value: string | null) {
 
 export function NextContactCard({
   contact,
+  campaignId,
   wavoipDeviceToken,
+  auttusChatEnabled,
   calling,
   onCall,
 }: {
   contact: QueueContact;
+  campaignId: string;
   wavoipDeviceToken?: string | null;
+  auttusChatEnabled?: boolean;
   calling?: boolean;
   onCall?: (phone: string) => void;
 }) {
+  const [openingAuttus, setOpeningAuttus] = useState(false);
   const phoneDigits = contact.phone.replace(/\D/g, "");
   const whatsappUrl = toWhatsAppUrl(contact.phone);
   const wavoipPhone = toWavoipPhone(contact.phone);
   const canVoip = Boolean(wavoipDeviceToken && wavoipPhone && onCall);
   const telHref = wavoipPhone ? `tel:+${wavoipPhone}` : phoneDigits ? `tel:${phoneDigits}` : null;
+
+  async function handleOpenAuttus() {
+    if (openingAuttus || calling) return;
+    setOpeningAuttus(true);
+    try {
+      const response = await fetch(
+        `/api/campaigns/${campaignId}/contacts/${contact.id}/auttus-conversation`,
+        { method: "POST" },
+      );
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        toast.error(data?.error ?? "Não foi possível abrir a conversa no Auttus.");
+        return;
+      }
+      const url = typeof data?.url === "string" ? data.url : null;
+      if (!url) {
+        toast.error("O Auttus não devolveu o link da conversa.");
+        return;
+      }
+      const opened = window.open(url, "_blank", "noopener,noreferrer");
+      if (!opened) {
+        window.location.href = url;
+      }
+    } catch {
+      toast.error("Não foi possível abrir a conversa no Auttus.");
+    } finally {
+      setOpeningAuttus(false);
+    }
+  }
 
   return (
     <Card className="overflow-hidden">
@@ -119,7 +155,18 @@ export function NextContactCard({
               Ligar celular
             </Button>
           )}
-          {whatsappUrl ? (
+          {auttusChatEnabled ? (
+            <Button
+              size="lg"
+              variant="outline"
+              className="sm:col-span-2"
+              disabled={calling || openingAuttus}
+              onClick={() => void handleOpenAuttus()}
+            >
+              <MessageSquare />
+              {openingAuttus ? "Abrindo Auttus..." : "Conversar no Auttus"}
+            </Button>
+          ) : whatsappUrl ? (
             <Button asChild size="lg" variant="outline" className="sm:col-span-2">
               <a href={whatsappUrl} target="_blank" rel="noreferrer">
                 Conversar
@@ -129,7 +176,16 @@ export function NextContactCard({
         </div>
         <p className="text-xs text-muted-foreground">
           <strong>Ligar WhatsApp</strong> é o VoIP nesta tela. <strong>Ligar celular</strong> abre o
-          discador do aparelho. <strong>Conversar</strong> abre o WhatsApp.
+          discador do aparelho.{" "}
+          {auttusChatEnabled ? (
+            <>
+              <strong>Conversar no Auttus</strong> cria ou reabre a conversa no WhatsApp oficial.
+            </>
+          ) : (
+            <>
+              <strong>Conversar</strong> abre o WhatsApp.
+            </>
+          )}
           {!canVoip
             ? " Para o VoIP, cole o token Wavoip em Configurações da campanha (ou no cadastro da agente) e recarregue."
             : null}

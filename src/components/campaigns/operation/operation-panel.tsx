@@ -43,6 +43,7 @@ export function OperationPanel({
   sellers,
   sellersNotifyEnabled,
   wavoipDeviceToken,
+  auttusChatEnabled,
 }: {
   campaignId: string;
   initialStats: QueueStats;
@@ -50,6 +51,7 @@ export function OperationPanel({
   sellers: Seller[];
   sellersNotifyEnabled: boolean;
   wavoipDeviceToken?: string | null;
+  auttusChatEnabled?: boolean;
 }) {
   const [stats, setStats] = useState<QueueStats>(initialStats);
   const [contact, setContact] = useState<QueueContact | null | undefined>(undefined);
@@ -304,7 +306,9 @@ export function OperationPanel({
         <div className="space-y-6">
           <NextContactCard
             contact={contact}
+            campaignId={campaignId}
             wavoipDeviceToken={wavoipDeviceToken}
+            auttusChatEnabled={auttusChatEnabled}
             calling={busy}
             onCall={handleCall}
           />

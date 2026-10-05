@@ -40,6 +40,13 @@ export function normalizePhone(raw: string): NormalizedPhone {
   return { normalized: digits, valid: true, formatted };
 }
 
+/** E.164 brasileiro, ex: +5567999999999. */
+export function toE164Phone(raw: string): string | null {
+  const { normalized, valid } = normalizePhone(raw);
+  if (!valid) return null;
+  return `+55${normalized}`;
+}
+
 /** Link do WhatsApp Web/app com DDI 55. */
 export function toWhatsAppUrl(raw: string): string | null {
   const { normalized, valid } = normalizePhone(raw);

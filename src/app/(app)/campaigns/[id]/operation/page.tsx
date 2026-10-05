@@ -6,6 +6,7 @@ import { getAgentQueueStats } from "@/server/services/campaign-operation";
 import { listActiveDispositions, listSellers } from "@/server/services/campaign-dispositions";
 import { campaignHasSellersNotifyWebhook } from "@/server/services/sellers-notify";
 import { getAgentWavoipToken } from "@/server/services/users";
+import { isAuttusChatConfigured } from "@/lib/auttus-chat";
 import { OperationPanel } from "@/components/campaigns/operation/operation-panel";
 import { InactiveCampaignState } from "@/components/campaigns/operation/inactive-campaign-state";
 import { Card, CardContent } from "@/components/ui/card";
@@ -61,6 +62,7 @@ export default async function CampaignOperationPage({ params }: { params: Promis
       sellers={sellers}
       sellersNotifyEnabled={campaignHasSellersNotifyWebhook(campaign.sellersNotifyWebhookUrl)}
       wavoipDeviceToken={wavoipDeviceToken}
+      auttusChatEnabled={isAuttusChatConfigured()}
     />
   );
 }

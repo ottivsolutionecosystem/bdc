@@ -27,6 +27,11 @@ services:
       AUTH_URL: https://bdc.ottiv.io
       SELLERS_GROUP_WEBHOOK_URL: ${SELLERS_GROUP_WEBHOOK_URL:-}
       WAVOIP_DEVICE_TOKEN: ${WAVOIP_DEVICE_TOKEN:-}
+      CHATWOOT_URL: ${CHATWOOT_URL:-https://on.ottiv.io}
+      CHATWOOT_API_ACCESS_TOKEN: ${CHATWOOT_API_ACCESS_TOKEN:-}
+      CHATWOOT_ACCOUNT_ID: ${CHATWOOT_ACCOUNT_ID:-}
+      CHATWOOT_OFFICIAL_INBOX_ID: ${CHATWOOT_OFFICIAL_INBOX_ID:-}
+      AUTTUS_APP_URL: ${AUTTUS_APP_URL:-https://app.auttus.com}
     depends_on:
       postgres:
         condition: service_healthy
