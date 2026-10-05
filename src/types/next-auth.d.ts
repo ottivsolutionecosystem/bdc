@@ -22,6 +22,7 @@ declare module "next-auth/jwt" {
     id: string;
     role: UserRole;
     active: boolean;
+    checkedAt?: number;
   }
 }
 
@@ -30,5 +31,6 @@ declare module "@auth/core/jwt" {
     id: string;
     role: UserRole;
     active: boolean;
+    checkedAt?: number;
   }
 }

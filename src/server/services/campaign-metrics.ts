@@ -34,12 +34,44 @@ function pct(numerator: number, denominator: number): number {
   return Math.round((numerator / denominator) * 1000) / 10;
 }
 
-function countByKey<T extends string>(rows: { key: T }[]): Map<T, number> {
-  const map = new Map<T, number>();
-  for (const row of rows) {
-    map.set(row.key, (map.get(row.key) ?? 0) + 1);
+function mapDistinctCounts(rows: Array<{ agentId: string; count: bigint | number }>) {
+  return new Map(rows.map((row) => [row.agentId, Number(row.count)]));
+}
+
+async function distinctContactsByAgent(
+  campaignId: string,
+  options: { contacted?: boolean; createdAtGte?: Date } = {},
+) {
+  if (options.contacted && options.createdAtGte) {
+    return mapDistinctCounts(
+      await prisma.$queryRaw<Array<{ agentId: string; count: bigint }>>`
+        SELECT "agentId", COUNT(DISTINCT "contactId") AS count
+        FROM campaign_contact_attempts
+        WHERE "campaignId" = ${campaignId}
+          AND contacted = true
+          AND "createdAt" >= ${options.createdAtGte}
+        GROUP BY "agentId"
+      `,
+    );
   }
-  return map;
+  if (options.contacted) {
+    return mapDistinctCounts(
+      await prisma.$queryRaw<Array<{ agentId: string; count: bigint }>>`
+        SELECT "agentId", COUNT(DISTINCT "contactId") AS count
+        FROM campaign_contact_attempts
+        WHERE "campaignId" = ${campaignId} AND contacted = true
+        GROUP BY "agentId"
+      `,
+    );
+  }
+  return mapDistinctCounts(
+    await prisma.$queryRaw<Array<{ agentId: string; count: bigint }>>`
+      SELECT "agentId", COUNT(DISTINCT "contactId") AS count
+      FROM campaign_contact_attempts
+      WHERE "campaignId" = ${campaignId}
+      GROUP BY "agentId"
+    `,
+  );
 }
 
 export async function getCampaignOverview(campaignId: string) {
@@ -74,65 +106,67 @@ export async function getAgentPerformance(campaignId: string) {
     include: { user: { select: { id: true, name: true } } },
   });
 
-  const [assignedRows, treatedRows, pendingRows, followUpRows, attemptTotalRows, attemptedDistinctRows, contactedDistinctRows, interestedRows, appointmentRows, noInterestRows] =
-    await Promise.all([
-      prisma.campaignContact.groupBy({
-        by: ["assignedAgentId"],
-        where: { campaignId, assignedAgentId: { not: null } },
-        _count: { _all: true },
-      }),
-      prisma.campaignContact.groupBy({
-        by: ["assignedAgentId"],
-        where: { campaignId, assignedAgentId: { not: null }, finalDisposition: treatedDispositionWhere },
-        _count: { _all: true },
-      }),
-      prisma.campaignContact.groupBy({
-        by: ["assignedAgentId"],
-        where: { campaignId, assignedAgentId: { not: null }, ...pendingContactWhere },
-        _count: { _all: true },
-      }),
-      prisma.campaignContact.groupBy({
-        by: ["assignedAgentId"],
-        where: { campaignId, assignedAgentId: { not: null }, finalDisposition: returnDispositionWhere },
-        _count: { _all: true },
-      }),
-      prisma.campaignContactAttempt.groupBy({
-        by: ["agentId"],
-        where: { campaignId },
-        _count: { _all: true },
-      }),
-      prisma.campaignContactAttempt.groupBy({
-        by: ["agentId", "contactId"],
-        where: { campaignId },
-      }),
-      prisma.campaignContactAttempt.groupBy({
-        by: ["agentId", "contactId"],
-        where: { campaignId, contacted: true },
-      }),
-      prisma.campaignContact.groupBy({
-        by: ["assignedAgentId"],
-        where: { campaignId, assignedAgentId: { not: null }, finalDisposition: interestedDispositionWhere },
-        _count: { _all: true },
-      }),
-      prisma.campaignContact.groupBy({
-        by: ["assignedAgentId"],
-        where: { campaignId, assignedAgentId: { not: null }, finalDisposition: appointmentDispositionWhere },
-        _count: { _all: true },
-      }),
-      prisma.campaignContact.groupBy({
-        by: ["assignedAgentId"],
-        where: { campaignId, assignedAgentId: { not: null }, finalDisposition: noInterestDispositionWhere },
-        _count: { _all: true },
-      }),
-    ]);
+  const [
+    assignedRows,
+    treatedRows,
+    pendingRows,
+    followUpRows,
+    attemptTotalRows,
+    attemptedDistinctMap,
+    contactedDistinctMap,
+    interestedRows,
+    appointmentRows,
+    noInterestRows,
+  ] = await Promise.all([
+    prisma.campaignContact.groupBy({
+      by: ["assignedAgentId"],
+      where: { campaignId, assignedAgentId: { not: null } },
+      _count: { _all: true },
+    }),
+    prisma.campaignContact.groupBy({
+      by: ["assignedAgentId"],
+      where: { campaignId, assignedAgentId: { not: null }, finalDisposition: treatedDispositionWhere },
+      _count: { _all: true },
+    }),
+    prisma.campaignContact.groupBy({
+      by: ["assignedAgentId"],
+      where: { campaignId, assignedAgentId: { not: null }, ...pendingContactWhere },
+      _count: { _all: true },
+    }),
+    prisma.campaignContact.groupBy({
+      by: ["assignedAgentId"],
+      where: { campaignId, assignedAgentId: { not: null }, finalDisposition: returnDispositionWhere },
+      _count: { _all: true },
+    }),
+    prisma.campaignContactAttempt.groupBy({
+      by: ["agentId"],
+      where: { campaignId },
+      _count: { _all: true },
+    }),
+    distinctContactsByAgent(campaignId),
+    distinctContactsByAgent(campaignId, { contacted: true }),
+    prisma.campaignContact.groupBy({
+      by: ["assignedAgentId"],
+      where: { campaignId, assignedAgentId: { not: null }, finalDisposition: interestedDispositionWhere },
+      _count: { _all: true },
+    }),
+    prisma.campaignContact.groupBy({
+      by: ["assignedAgentId"],
+      where: { campaignId, assignedAgentId: { not: null }, finalDisposition: appointmentDispositionWhere },
+      _count: { _all: true },
+    }),
+    prisma.campaignContact.groupBy({
+      by: ["assignedAgentId"],
+      where: { campaignId, assignedAgentId: { not: null }, finalDisposition: noInterestDispositionWhere },
+      _count: { _all: true },
+    }),
+  ]);
 
   const assignedMap = new Map(assignedRows.map((r) => [r.assignedAgentId as string, r._count._all]));
   const treatedMap = new Map(treatedRows.map((r) => [r.assignedAgentId as string, r._count._all]));
   const pendingMap = new Map(pendingRows.map((r) => [r.assignedAgentId as string, r._count._all]));
   const followUpMap = new Map(followUpRows.map((r) => [r.assignedAgentId as string, r._count._all]));
   const attemptTotalMap = new Map(attemptTotalRows.map((r) => [r.agentId, r._count._all]));
-  const attemptedDistinctMap = countByKey(attemptedDistinctRows.map((r) => ({ key: r.agentId })));
-  const contactedDistinctMap = countByKey(contactedDistinctRows.map((r) => ({ key: r.agentId })));
   const interestedMap = new Map(interestedRows.map((r) => [r.assignedAgentId as string, r._count._all]));
   const appointmentMap = new Map(appointmentRows.map((r) => [r.assignedAgentId as string, r._count._all]));
   const noInterestMap = new Map(noInterestRows.map((r) => [r.assignedAgentId as string, r._count._all]));
@@ -203,7 +237,11 @@ export async function getCampaignFunnel(campaignId: string) {
     await Promise.all([
       prisma.campaignContact.count({ where: { campaignId } }),
       prisma.campaignContactAttempt.count({ where: { campaignId } }),
-      prisma.campaignContactAttempt.groupBy({ by: ["contactId"], where: { campaignId, contacted: true } }),
+      prisma.$queryRaw<Array<{ count: bigint }>>`
+        SELECT COUNT(DISTINCT "contactId") AS count
+        FROM campaign_contact_attempts
+        WHERE "campaignId" = ${campaignId} AND contacted = true
+      `,
       prisma.campaignContact.count({ where: { campaignId, finalDisposition: interestedDispositionWhere } }),
       prisma.campaignContact.count({ where: { campaignId, finalDisposition: appointmentDispositionWhere } }),
       prisma.campaignContact.count({ where: { campaignId, finalDisposition: noInterestDispositionWhere } }),
@@ -214,7 +252,7 @@ export async function getCampaignFunnel(campaignId: string) {
   return [
     { stage: "Base importada", value: baseImported },
     { stage: "Tentativas realizadas", value: attemptsMade },
-    { stage: "Clientes contatados", value: contactedRows.length },
+    { stage: "Clientes contatados", value: Number(contactedRows[0]?.count ?? 0) },
     { stage: "Interessados", value: interested },
     { stage: "Agendamentos", value: appointments },
     { stage: "Sem interesse", value: noInterest },
@@ -239,7 +277,7 @@ export async function getCampaignRanking(campaignId: string): Promise<RankingBoa
     campaign,
     performance,
     attemptsTodayRows,
-    contactedTodayRows,
+    contactedTodayMap,
     treatedTodayRows,
     interestedTodayRows,
     appointmentsTodayRows,
@@ -254,10 +292,7 @@ export async function getCampaignRanking(campaignId: string): Promise<RankingBoa
       where: { campaignId, createdAt: { gte: todayStart } },
       _count: { _all: true },
     }),
-    prisma.campaignContactAttempt.groupBy({
-      by: ["agentId", "contactId"],
-      where: { campaignId, contacted: true, createdAt: { gte: todayStart } },
-    }),
+    distinctContactsByAgent(campaignId, { contacted: true, createdAtGte: todayStart }),
     prisma.campaignContact.groupBy({
       by: ["assignedAgentId"],
       where: {
@@ -291,7 +326,6 @@ export async function getCampaignRanking(campaignId: string): Promise<RankingBoa
   ]);
 
   const attemptsTodayMap = new Map(attemptsTodayRows.map((row) => [row.agentId, row._count._all]));
-  const contactedTodayMap = countByKey(contactedTodayRows.map((row) => ({ key: row.agentId })));
   const treatedTodayMap = new Map(
     treatedTodayRows.map((row) => [row.assignedAgentId as string, row._count._all])
   );

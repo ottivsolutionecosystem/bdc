@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueueStatCards, type QueueStats } from "@/components/campaigns/operation/queue-stat-cards";
 import { NextContactCard } from "@/components/campaigns/operation/next-contact-card";
@@ -181,19 +182,16 @@ export function OperationPanel({
     const data = await response.json().catch(() => null);
     if (!response.ok) {
       toast.error(data?.error ?? "Não foi possível salvar o parecer.");
-      return;
+      throw new Error(data?.error ?? "Não foi possível salvar o parecer.");
     }
 
     const saved = data?.contact as QueueContact | undefined;
-    if (data?.sellersNotify?.status === "sent") {
-      toast.success("Parecer registrado e grupo de vendedores avisado.");
-    } else if (data?.sellersNotify?.status === "failed") {
-      toast.success("Parecer registrado com sucesso.");
-      toast.error(data.sellersNotify.error ?? "Não foi possível avisar o grupo de vendedores.");
+    if (data?.sellersNotify?.status === "queued") {
+      toast.success("Parecer registrado. O grupo de vendedores será avisado.");
     } else {
       toast.success("Parecer registrado com sucesso.");
     }
-    if (saved && shouldStayOnQueueContact(saved, sellersNotifyEnabled)) {
+    if (saved && shouldStayOnQueueContact(saved)) {
       setContact(saved);
       await fetchStats();
       return;
@@ -323,8 +321,15 @@ export function OperationPanel({
             <TransferToSalesButton
               campaignId={campaignId}
               contactId={contact.id}
-              onTransferred={() => fetchStats()}
+              onTransferred={() => {
+                void Promise.all([fetchNextContact(), fetchStats()]);
+              }}
             />
+          )}
+          {shouldStayOnQueueContact(contact) && (
+            <Button variant="outline" className="w-full" onClick={() => void fetchNextContact()}>
+              Ir para o próximo
+            </Button>
           )}
           <DispositionForm
             key={contact.id}

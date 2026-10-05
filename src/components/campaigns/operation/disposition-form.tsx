@@ -31,6 +31,11 @@ import type { DispositionCategory } from "@/generated/prisma/enums";
 
 const CATEGORY_ORDER: DispositionCategory[] = ["POSITIVE", "CONVERSION", "FOLLOW_UP", "NO_INTEREST", "NOT_REACHED"];
 
+function toDateTimeLocalValue(date: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export function DispositionForm({
   dispositions,
   sellers,
@@ -72,6 +77,10 @@ export function DispositionForm({
       form.setError("nextContactAt", { message: "Informe data e horário do próximo contato" });
       return;
     }
+    if (isFollowUp && values.nextContactAt && new Date(values.nextContactAt).getTime() < Date.now() + 60_000) {
+      form.setError("nextContactAt", { message: "O retorno precisa ser pelo menos 1 minuto no futuro." });
+      return;
+    }
     if (wantsAppointment && !values.appointment?.scheduledAt) {
       toast.error("Informe a data e horário da visita.");
       return;
@@ -85,6 +94,8 @@ export function DispositionForm({
       });
       form.reset({ dispositionId: "", notes: "" });
       setWantsAppointment(false);
+    } catch {
+      // O painel já mostrou o erro; o formulário permanece preenchido.
     } finally {
       setSubmitting(false);
     }
@@ -136,6 +147,7 @@ export function DispositionForm({
                 <FormControl>
                   <Input
                     type="datetime-local"
+                    min={toDateTimeLocalValue(new Date(Date.now() + 60_000))}
                     onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value).toISOString() : "")}
                   />
                 </FormControl>

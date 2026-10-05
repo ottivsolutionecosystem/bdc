@@ -70,7 +70,13 @@ export async function transferContactToSales(
 
     await tx.campaignContact.update({
       where: { id: contactId },
-      data: { transferredToSales: true, status: "CONVERTED" },
+      data: {
+        transferredToSales: true,
+        status: "CONVERTED",
+        lockedByUserId: null,
+        lockedAt: null,
+        lockExpiresAt: null,
+      },
     });
 
     await recordAudit(tx, {

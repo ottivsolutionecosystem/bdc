@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import type { Prisma } from "@/generated/prisma/client";
 import type { ContactStatus, ContactTemperature, DispositionCategory } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
@@ -143,6 +144,17 @@ export async function submitAttempt(
     throw new ApiError(422, "Este parecer exige data e horário do próximo contato");
   }
 
+  const nextContactAt =
+    disposition.requiresNextContact && input.nextContactAt ? new Date(input.nextContactAt) : null;
+  if (nextContactAt) {
+    if (Number.isNaN(nextContactAt.getTime())) {
+      throw new ApiError(422, "Data do próximo contato inválida.");
+    }
+    if (nextContactAt.getTime() < Date.now() + 60_000) {
+      throw new ApiError(422, "O retorno precisa ser pelo menos 1 minuto no futuro.");
+    }
+  }
+
   const attemptNumber = contact.attemptsCount + 1;
   const contacted = disposition.category !== "NOT_REACHED";
   const statusAfterAttempt = statusAfterDisposition(disposition.category, attemptNumber);
@@ -158,7 +170,7 @@ export async function submitAttempt(
         temperature,
         attemptsCount: attemptNumber,
         lastAttemptAt: new Date(),
-        nextContactAt: disposition.requiresNextContact && input.nextContactAt ? new Date(input.nextContactAt) : null,
+        nextContactAt,
         finalDispositionId: disposition.id,
         notes: input.notes || null,
         interestedInEvent: input.qualification?.interestedInEvent ?? contact.interestedInEvent,
@@ -186,7 +198,7 @@ export async function submitAttempt(
         statusAfterAttempt,
         notes: input.notes || null,
         contacted,
-        nextContactAt: disposition.requiresNextContact && input.nextContactAt ? new Date(input.nextContactAt) : null,
+        nextContactAt,
       },
     });
 
@@ -237,8 +249,9 @@ export async function submitAttempt(
     });
   });
 
-  let contactAfterNotify = saved;
-  let sellersNotify: { status: "skipped" | "sent" | "failed"; error?: string } = { status: "skipped" };
+  let sellersNotify: { status: "skipped" | "queued" | "sent" | "failed"; error?: string } = {
+    status: "skipped",
+  };
 
   if (isSellersNotifyDispositionCategory(disposition.category)) {
     const campaign = await prisma.campaign.findUnique({
@@ -246,21 +259,17 @@ export async function submitAttempt(
       select: { sellersNotifyWebhookUrl: true },
     });
     if (campaignHasSellersNotifyWebhook(campaign?.sellersNotifyWebhookUrl)) {
-      try {
-        contactAfterNotify = await notifySellersGroup(user, campaignId, contactId, {
-          note: input.notes?.trim() || undefined,
+      const note = input.notes?.trim() || undefined;
+      sellersNotify = { status: "queued" };
+      after(() => {
+        void notifySellersGroup(user, campaignId, contactId, { note }).catch((error) => {
+          console.error("sellers-notify", error);
         });
-        sellersNotify = { status: "sent" };
-      } catch (error) {
-        sellersNotify = {
-          status: "failed",
-          error: error instanceof ApiError ? error.message : "Não foi possível avisar o grupo de vendedores.",
-        };
-      }
+      });
     }
   }
 
-  return { contact: contactAfterNotify, sellersNotify };
+  return { contact: saved, sellersNotify };
 }
 
 export async function getAgentQueueStats(userId: string, campaignId: string) {

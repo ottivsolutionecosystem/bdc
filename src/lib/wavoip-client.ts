@@ -175,12 +175,17 @@ export async function startWavoipCall(params: {
 
 export async function hangupWavoipCall() {
   const call = liveCall;
+  const cb = endedCallback;
   liveCall = null;
-  if (!call) return;
+  endedCallback = null;
+  if (!call) {
+    cb?.();
+    return;
+  }
   try {
     await call.end();
   } finally {
-    handleEnded();
+    cb?.();
   }
 }
 
