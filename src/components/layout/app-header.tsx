@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Handshake, PhoneCall, Users } from "lucide-react";
+import { Handshake, PhoneCall, Store, Users } from "lucide-react";
 
 import { BrandLink } from "@/components/brand/logo";
 import { UserMenu } from "@/components/layout/user-menu";
@@ -14,10 +14,25 @@ type NavItem = { href: string; label: string; icon: typeof PhoneCall };
 
 function navGroups(role: UserRole): { title: string; items: NavItem[] }[] {
   if (role === "SELLER") {
-    return [{ title: "Hoje", items: [{ href: "/sales", label: "Vendas", icon: Handshake }] }];
+    return [
+      {
+        title: "Hoje",
+        items: [
+          { href: "/sales", label: "Vendas", icon: Handshake },
+          { href: "/floor", label: "Feirão", icon: Store },
+        ],
+      },
+    ];
+  }
+
+  if (role === "RECEPTIONIST" || role === "APPRAISER" || role === "FINANCE" || role === "DELIVERY") {
+    return [{ title: "Hoje", items: [{ href: "/floor", label: "Feirão", icon: Store }] }];
   }
 
   const hoje: NavItem[] = [{ href: "/campaigns", label: "Campanhas", icon: PhoneCall }];
+  if (role === "ADMIN" || role === "SUPERVISOR") {
+    hoje.push({ href: "/floor", label: "Feirão", icon: Store });
+  }
   const admin: NavItem[] = [];
   if (role === "ADMIN" || role === "SUPERVISOR") {
     admin.push({ href: "/customers", label: "Clientes", icon: Handshake });
@@ -73,12 +88,12 @@ export function AppSidebar({ homeHref, role }: { homeHref: string; role: UserRol
   );
 }
 
-export function AppTopbar({ role, name }: { role: UserRole; name: string }) {
+export function AppTopbar({ homeHref, name, role }: { homeHref: string; name: string; role: UserRole }) {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-white pt-[env(safe-area-inset-top)]">
       <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
         <div className="md:hidden">
-          <BrandLink href={role === "SELLER" ? "/sales" : "/campaigns"} variant="compact" />
+          <BrandLink href={homeHref} variant="compact" />
         </div>
         <div className="ml-auto flex items-center gap-1">
           <InstallPwaButton />

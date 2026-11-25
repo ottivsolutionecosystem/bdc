@@ -1,4 +1,4 @@
-const CACHE = "auttus-static-v5";
+const CACHE = "auttus-static-v6";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -42,6 +42,13 @@ self.addEventListener("fetch", (event) => {
           }),
       ),
     );
+    return;
+  }
+
+  if (
+    (self.location.hostname === "localhost" || self.location.hostname === "127.0.0.1") &&
+    url.pathname.startsWith("/_next/")
+  ) {
     return;
   }
 

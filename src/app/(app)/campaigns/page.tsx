@@ -15,7 +15,7 @@ import { PageHeader } from "@/components/layout/page-header";
 export default async function CampaignsPage() {
   const session = await auth();
   const user = session!.user;
-  if (user.role === "SELLER") {
+  if (user.role !== "ADMIN" && user.role !== "SUPERVISOR" && user.role !== "AGENT") {
     redirect(homePathForRole(user.role));
   }
   const campaigns = await listCampaignsForUser(user);

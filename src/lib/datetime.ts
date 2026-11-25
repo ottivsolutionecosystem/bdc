@@ -10,6 +10,39 @@ function calendarDateInAppTz(now: Date): string {
   }).format(now);
 }
 
+/** Dia de hoje em Cuiabá, no formato AAAA-MM-DD. */
+export function todayKeyInAppTz(now = new Date()): string {
+  return calendarDateInAppTz(now);
+}
+
+/** Dia de um instante em Cuiabá, no formato AAAA-MM-DD. */
+export function dateKeyInAppTz(value: Date | string): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return calendarDateInAppTz(date);
+}
+
+/** Hora cheia (0–23) de um instante em Cuiabá. */
+export function hourInAppTz(value: Date | string): number {
+  const date = typeof value === "string" ? new Date(value) : value;
+  const hour = new Intl.DateTimeFormat("en-US", {
+    timeZone: APP_TIMEZONE,
+    hour: "numeric",
+    hourCycle: "h23",
+  })
+    .formatToParts(date)
+    .find((part) => part.type === "hour")?.value;
+  const parsed = Number(hour);
+  if (!Number.isFinite(parsed)) return 0;
+  return parsed === 24 ? 0 : parsed;
+}
+
+/** AAAA-MM-DD para dd/mm/aaaa, sem deslocar o fuso. */
+export function formatDateKey(key: string): string {
+  const [year, month, day] = key.slice(0, 10).split("-");
+  if (!year || !month || !day) return key;
+  return `${day}/${month}/${year}`;
+}
+
 /** Meia-noite de hoje em Cuiabá. */
 export function startOfTodayInAppTz(now = new Date()): Date {
   return new Date(`${calendarDateInAppTz(now)}T00:00:00-04:00`);

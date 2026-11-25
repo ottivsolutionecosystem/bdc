@@ -87,6 +87,10 @@ async function seedUsers() {
     { email: "maria@demo.com", name: "Maria", role: "AGENT" as const },
     { email: "julia@demo.com", name: "Julia", role: "AGENT" as const },
     { email: "vendedor@demo.com", name: "Vendedor Demo", role: "SELLER" as const },
+    { email: "recepcao@demo.com", name: "Recepção Demo", role: "RECEPTIONIST" as const },
+    { email: "avaliador@demo.com", name: "Avaliador Demo", role: "APPRAISER" as const },
+    { email: "fi@demo.com", name: "F&I Demo", role: "FINANCE" as const },
+    { email: "entrega@demo.com", name: "Entrega Demo", role: "DELIVERY" as const },
   ];
 
   for (const u of users) {
@@ -114,6 +118,7 @@ async function clearMockOperationalData() {
       campaignContacts: { none: {} },
       opportunities: { none: {} },
       appointments: { none: {} },
+      fairVisits: { none: {} },
     },
   });
   if (mockCustomers.count > 0) {

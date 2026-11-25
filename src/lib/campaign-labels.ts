@@ -14,6 +14,10 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   SUPERVISOR: "Supervisor(a)",
   AGENT: "Agente",
   SELLER: "Vendedor(a)",
+  RECEPTIONIST: "Recepcionista",
+  APPRAISER: "Avaliador(a)",
+  FINANCE: "F&I",
+  DELIVERY: "Entregador(a)",
 };
 
 export const ASSIGNMENT_REASON_LABELS: Record<AssignmentChangeReason, string> = {

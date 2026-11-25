@@ -1,6 +1,15 @@
 import { z } from "zod";
 
-export const userRoleValues = ["ADMIN", "SUPERVISOR", "AGENT", "SELLER"] as const;
+export const userRoleValues = [
+  "ADMIN",
+  "SUPERVISOR",
+  "AGENT",
+  "SELLER",
+  "RECEPTIONIST",
+  "APPRAISER",
+  "FINANCE",
+  "DELIVERY",
+] as const;
 
 const wavoipDeviceTokenSchema = z.string().trim().max(500).optional();
 

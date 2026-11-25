@@ -47,6 +47,9 @@ next-env.d.ts
 
 /src/generated/prisma
 
+# fotos de avaliação enviadas na operação do feirão
+/public/uploads
+
 # tooling skill docs auto-installed by `prisma init` (agent-only reference material)
 /.agents/
 /.claude/

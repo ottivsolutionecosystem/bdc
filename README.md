@@ -36,6 +36,10 @@ Senha de todos: `demo1234`
 | Supervisora  | supervisor@demo.com    |
 | Agentes      | ana@demo.com, maria@demo.com, julia@demo.com |
 | Vendedor     | vendedor@demo.com      |
+| Recepção     | recepcao@demo.com      |
+| Avaliador    | avaliador@demo.com     |
+| F&I          | fi@demo.com            |
+| Entrega      | entrega@demo.com       |
 
 ## Fluxo típico
 
@@ -45,6 +49,7 @@ Senha de todos: `demo1234`
 4. Ativa a campanha — só então a fila de **Operação** libera as ligações.
 5. Agentes registram pareceres; a ficha do cliente e o **Histórico** acompanham o tratamento.
 6. Contatos quentes podem ir para o vendedor, que acompanha oportunidades e agenda em `/sales`.
+7. No dia do feirão, a recepção registra a chegada em `/floor`. O cliente segue para o vendedor, a avaliação (se houver troca), o F&I e a fila de entrega.
 
 O seed **não** cria campanha nem base. Crie a campanha, vincule as agentes, importe a planilha e ative para a fila funcionar.
 

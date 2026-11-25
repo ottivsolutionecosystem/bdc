@@ -48,6 +48,10 @@ export function requireSeller(user: SessionUser): void {
   requireRole(user, ["SELLER"]);
 }
 
+const FLOOR_HOME_ROLES: UserRole[] = ["RECEPTIONIST", "APPRAISER", "FINANCE", "DELIVERY"];
+
 export function homePathForRole(role: UserRole): string {
-  return role === "SELLER" ? "/sales" : "/campaigns";
+  if (role === "SELLER") return "/sales";
+  if (FLOOR_HOME_ROLES.includes(role)) return "/floor";
+  return "/campaigns";
 }
